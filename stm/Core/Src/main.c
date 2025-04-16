@@ -1,5 +1,7 @@
+#include "lcd.h"
 #include "spi.h"
 #include "stm32l552xx.h"
+#include "timer.h"
 
 void enableClocks() {
   RCC->APB1ENR1 |= (1 << 28) | // Power interface clock enable
@@ -24,11 +26,12 @@ void enableClocks() {
 }
 
 /*
-  GPIOE 15 - SPI1_MOSI
-  GPIOE 13 - SPI1_SCK
-  GPIOE 12 - SPI CS
-  GPIOE 11 - LCD RS
-  GPIOE 10 - LCD RST
+  GPIOE 15 (SPI1_MOSI)  <-> J2.15 (LCD SDA/SPI MOSI)
+  GPIOE 13 (SPI1_SCK)   <-> J1.7 (LCD SPI CLK)
+  GPIOE 12              <-> J2.13 (LCD SPI CS)
+  GPIOE 11              <-> J4.31 (LCD RS)
+  GPIOE 10              <-> J2.17 (LCD RST)
+  GPIOE 3  (TIM3 PWM)   <-> J4.39 (LCD BACKLIGHT)
 */
 
 void initGPIOs() {
@@ -56,13 +59,6 @@ void initGPIOs() {
   GPIOE->AFR[0] |= (0b0010 << 12); // Set GPIOE 3 to TIM3_CH1
 }
 
-void resetTIM1Count() {
-  TIM1->CR1 &= ~(1 << 0); // Disable TIM1
-  TIM1->EGR |= (1 << 0);  // Update generation
-  TIM1->SR &= ~(1 << 0);  // Clear update interrupt flag
-  TIM1->CR1 |= (1 << 0);  // Enable TIM1
-}
-
 void LPUART1_IRQHandler() {
   // Check RXNE flag
   if (((LPUART1->ISR >> 5) & 1) == 1) {
@@ -85,44 +81,13 @@ void initLPUART1() {
   NVIC_EnableIRQ(LPUART1_IRQn);      // Enable LPUART1 IRQ
 }
 
-void TIM1_UP_IRQHandler() {
-
-  // TODO: Update LCD display
-
-  TIM1->SR &= ~(1 << 0); // Clear update interrupt flag
-}
-
-void initTimers() {
-  TIM1->PSC = 16000 - 1;  // Period of 1 MS (16Mhz / 16000)
-  TIM1->ARR = 10;         // Count for 10 MS
-  TIM1->CNT = 0;          // Reset counter
-  TIM1->DIER |= (1 << 0); // Enable update interrupt
-  TIM1->SR &= ~(1 << 0);  // Clear update interrupt flag
-  TIM1->CR1 |=
-      (1 << 3) | // Enable one-pulse mode
-      (1 << 2);  // Only counter overflow/undeflow generates an update interrupt
-
-  NVIC_SetPriority(TIM1_UP_IRQn, 0); // Set interrupt priority to 0 (max)
-  NVIC_EnableIRQ(TIM1_UP_IRQn);      // Enable TIM1 IRQ
-
-  TIM3->PSC = 0;       // Period of 62.5 NS (16MHz / 1)
-  TIM3->ARR = 100 - 1; // Count 100 times
-
-  TIM3->CCMR1 = (0b110 << 4); // Active for TIM3_CNT < TIM3_CCR1
-  TIM3->CCR1 = 100;           // Capture/compare value for channel 1
-
-  TIM3->CCER = (1 << 0); // Enable capture/compare for channel 1
-
-  TIM3->CNT = 0;        // Reset counter
-  TIM3->CR1 = (1 << 0); // Enable TIM3
-}
-
 int main() {
   enableClocks();
   initGPIOs();
   initLPUART1();
   initTimers();
   initSPI1();
+  initLCD();
 
   while (1) {
   }

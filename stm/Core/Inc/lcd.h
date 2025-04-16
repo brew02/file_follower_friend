@@ -3,4 +3,6 @@
 
 #include <stdint.h>
 
+void initLCD();
+
 #endif
