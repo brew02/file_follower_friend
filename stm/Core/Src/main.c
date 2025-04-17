@@ -90,6 +90,7 @@ int main() {
   initLCD();
 
   while (1) {
+    useLCD();
   }
 
   return 0;

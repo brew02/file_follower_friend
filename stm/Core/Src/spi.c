@@ -13,11 +13,6 @@ void initSPI1() {
   SPI1->CR1 |= (1 << 6);   // Enable SPI1
 }
 
-uint8_t readSPI1() {
-  // Read 8 bits
-  return *(volatile uint8_t *)(&SPI1->DR);
-}
-
 void writeSPI1(uint8_t val) {
   // Write 8 bits
   *(volatile uint8_t *)(&SPI1->DR) = val;

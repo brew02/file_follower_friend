@@ -38,7 +38,7 @@ void initTimers() {
   TIM3->PSC = 0;              // Period of 62.5 NS (16MHz / 1)
   TIM3->ARR = 100 - 1;        // Count 100 times
   TIM3->CCMR1 = (0b110 << 4); // Active for TIM3_CNT < TIM3_CCR1
-  TIM3->CCR1 = 100;           // Capture/compare value for channel 1
+  TIM3->CCR1 = 0;             // Capture/compare value for channel 1
   TIM3->CCER = (1 << 0);      // Enable capture/compare for channel 1
   TIM3->CNT = 0;              // Reset counter
 

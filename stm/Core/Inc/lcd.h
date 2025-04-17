@@ -4,5 +4,6 @@
 #include <stdint.h>
 
 void initLCD();
+void useLCD();
 
 #endif
