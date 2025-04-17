@@ -25,7 +25,7 @@ void enableClocks() {
   RCC->APB2ENR |= (1 << 12) | // SPI1 clock enable
                   (1 << 11);  // TIM1 clock enable
 
-  RCC->CCIPR1 |= (0b11 << 10); // HSI16 clock for LPUART1
+  RCC->CCIPR1 |= (0b01 << 10); // HSI16 clock for LPUART1
 
   RCC->CFGR |= (1 << 0); // HSI16 clock for SYSCLK
 
@@ -35,13 +35,24 @@ void enableClocks() {
 }
 
 void initGPIOs() {
-  PWR->CR2 |= (1 << 9); // Enable power to GPIOG
+	// Enable GPIOG
+	bitset(PWR->CR2, 9);
 
-  GPIOG->MODER |= (0b10 << 16) | // Set GPIOG 8 to AF
-                  (0b10 << 14);  // Set GPIOG 7 to AF
+	//set GPIOG.7 to AF
+	bitset(GPIOG->MODER, 15); // Setting 10 in pin 7 two bit mode cfgs
+	bitclear(GPIOG->MODER, 14);
+	bitset(GPIOG->AFR[0], 31); // Programming 0b1000
+	bitclear(GPIOG->AFR[0], 30);
+	bitclear(GPIOG->AFR[0], 29);
+	bitclear(GPIOG->AFR[0], 28);
 
-  GPIOG->AFR[1] |= (0b1000 << 0);  // Set GPIOG 8 to LPUART1_RX
-  GPIOG->AFR[0] |= (0b1000 << 28); // Set GPIOG 7 to LPUART1_TX
+	//set GPIOG.8 to AF
+	bitset(GPIOG->MODER, 17); // Setting 10 in pin 8 two bit mode cfgs
+	bitclear(GPIOG->MODER, 16);
+	bitset( GPIOG->AFR[1], 3); // Programming 0b1000
+	bitclear(GPIOG->AFR[1], 2);
+	bitclear(GPIOG->AFR[1], 1);
+	bitclear(GPIOG->AFR[1], 0);
 
   GPIOE->MODER |= (0b10 << 30) | // Set GPIOE 15 to AF
                   (0b10 << 28) | // Set GPIOE 14 to AF
@@ -65,14 +76,6 @@ void resetTIM1Count() {
 }
 
 void LPUART1_IRQHandler() {
-	// Left this commented for now
-//  // Check RXNE flag
-//  if (((LPUART1->ISR >> 5) & 1) == 1) {
-//
-//    // Reset the counter (receiving a continuous message)
-//    resetTIM1Count();
-//  }
-
 	// RXNE (Receive not empty)
 	if (LPUART1->ISR & (1 << 5)) {
 		char received_char = LPUART1->RDR;
@@ -104,10 +107,7 @@ void EXTI13_IRQHandler() {
 
 void initLPUART1() {
   LPUART1->BRR = 35555;      // BAUD rate of 115200 (256 * 16Mhz / 115200)
-  LPUART1->CR1 |= (1 << 5) | // Enable RXFIFO not empty interrupt
-                  (1 << 3) | // Enable transmitter
-                  (1 << 2) | // Enable receiver
-                  (1 << 0);  // Enable LPUART1
+  LPUART1->CR1 = 0xD | (1<<5); // Enable Receive Data Not Empty Interrupt (RXNEIE)
 
   NVIC_SetPriority(LPUART1_IRQn, 0); // Set interrupt priority to 0 (max)
   NVIC_EnableIRQ(LPUART1_IRQn);      // Enable LPUART1 IRQ
