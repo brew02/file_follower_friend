@@ -1,28 +1,34 @@
+#include "bitmacro.h"
 #include "lcd.h"
 #include "spi.h"
 #include "stm32l552xx.h"
 #include "timer.h"
 
 void enableClocks() {
-  RCC->APB1ENR1 |= (1 << 28) | // Power interface clock enable
-                   (1 << 1);   // TIM3 clock enable
+  BITSET(RCC->APB1ENR1, 28); // Power interface clock enable
+  BITSET(RCC->APB1ENR1, 1);  // TIM3 clock enable
 
-  RCC->AHB2ENR |= (1 << 6) | // GPIOG clock enable
-                  (1 << 4) | // GPIOE clock enable
-                  (1 << 2);  // GPIOC clock enable
+  BITSET(RCC->AHB2ENR, 6); // GPIOG clock enable
+  BITSET(RCC->AHB2ENR, 4); // GPIOE clock enable
+  BITSET(RCC->AHB2ENR, 2); // GPIOC clock enable
 
-  RCC->APB1ENR2 |= (1 << 0); // LPUART1 clock enable
+  BITSET(RCC->APB1ENR2, 0); // LPUART1 clock enable
 
-  RCC->APB2ENR |= (1 << 12) | // SPI1 clock enable
-                  (1 << 11);  // TIM1 clock enable
+  BITSET(RCC->APB2ENR, 12); // SPI1 clock enable
+  BITSET(RCC->APB2ENR, 11); // TIM1 clock enable
+  BITSET(RCC->APB2ENR, 0);  // SYSCFG clock enable
 
-  RCC->CCIPR1 |= (0b11 << 10); // HSI16 clock for LPUART1
+  BITSET(RCC->CCIPR1, 11); // HSI16 clock for LPUART1
+  BITCLEAR(RCC->CCIPR1, 10);
 
-  RCC->CFGR |= (1 << 0); // HSI16 clock for SYSCLK
+  BITSET(RCC->CFGR, 0); // HSI16 clock for SYSCLK
 
-  RCC->CR |= (1 << 8) |    // HSI16 clock enable
-             (0b11 << 5) | // MSI clock at 4MHz
-             (1 << 0);     // MSI clock enable
+  BITSET(RCC->CR, 8);   // HSI16 clock enable
+  BITCLEAR(RCC->CR, 7); // MSI clock at 4MHz
+  BITSET(RCC->CR, 6);
+  BITSET(RCC->CR, 5);
+  BITCLEAR(RCC->CR, 4);
+  BITSET(RCC->CR, 0); // MSI clock enable
 }
 
 /*
@@ -35,28 +41,53 @@ void enableClocks() {
 */
 
 void initGPIOs() {
-  PWR->CR2 |= (1 << 9); // Enable power to GPIOG
+  BITSET(PWR->CR2, 9);      // Enable power to GPIOG
+  BITSET(GPIOG->MODER, 17); // Set GPIOG 8 to AF
+  BITCLEAR(GPIOG->MODER, 16);
+  BITSET(GPIOG->MODER, 15); // Set GPIOG 7 to AF
+  BITCLEAR(GPIOG->MODER, 14);
 
-  GPIOG->MODER |= (0b10 << 16) | // Set GPIOG 8 to AF
-                  (0b10 << 14);  // Set GPIOG 7 to AF
+  BITSET(GPIOG->AFR[1], 3); // Set GPIOG 8 to LPUART1_RX
+  BITCLEAR(GPIOG->AFR[1], 2);
+  BITCLEAR(GPIOG->AFR[1], 1);
+  BITCLEAR(GPIOG->AFR[1], 0);
 
-  GPIOG->AFR[1] |= (0b1000 << 0);  // Set GPIOG 8 to LPUART1_RX
-  GPIOG->AFR[0] |= (0b1000 << 28); // Set GPIOG 7 to LPUART1_TX
+  BITSET(GPIOG->AFR[0], 31); // Set GPIOG 7 to LPUART1_TX
+  BITCLEAR(GPIOG->AFR[0], 30);
+  BITCLEAR(GPIOG->AFR[0], 29);
+  BITCLEAR(GPIOG->AFR[0], 28);
 
-  GPIOE->MODER |= (0b10 << 30) | // Set GPIOE 15 to AF
-                  (0b10 << 26) | // Set GPIOE 13 to AF
-                  (0b01 << 24) | // Set GPIOE 12 to output
-                  (0b01 << 22) | // Set GPIOE 11 to output
-                  (0b01 << 20) | // Set GPIOE 10 to output
-                  (0b10 << 6);   // Set GPIOE 3 to AF
+  BITSET(GPIOE->MODER, 31); // Set GPIOE 15 to AF
+  BITCLEAR(GPIOE->MODER, 30);
+  BITSET(GPIOE->MODER, 27); // Set GPIOE 13 to AF
+  BITCLEAR(GPIOE->MODER, 26);
+  BITCLEAR(GPIOE->MODER, 25); // Set GPIOE 12 to output
+  BITSET(GPIOE->MODER, 24);
+  BITCLEAR(GPIOE->MODER, 23); // Set GPIOE 11 to output
+  BITSET(GPIOE->MODER, 22);
+  BITCLEAR(GPIOE->MODER, 21); // Set GPIOE 10 to output
+  BITSET(GPIOE->MODER, 20);
+  BITSET(GPIOE->MODER, 7); // Set GPIOE 3 to AF
+  BITCLEAR(GPIOE->MODER, 6);
 
-  GPIOE->OSPEEDR |= (0b11 << 30) | // Set GPIOE 15 to very high speed
-                    (0b11 << 26);  // Set GPIOE 13 to very high speed
+  BITSET(GPIOE->OSPEEDR, 31); // Set GPIOE 15 to very high speed
+  BITSET(GPIOE->OSPEEDR, 30);
+  BITSET(GPIOE->OSPEEDR, 27); // Set GPIOE 13 to very high speed
+  BITSET(GPIOE->OSPEEDR, 26);
 
-  GPIOE->AFR[1] |= (0b0101 << 28) | // Set GPIOE 15 to SPI1_MOSI
-                   (0b0101 << 20);  // Set GPIOE 13 to SPI1_SCK
+  BITCLEAR(GPIOE->AFR[1], 31); // Set GPIOE 15 to SPI1_MOSI
+  BITSET(GPIOE->AFR[1], 30);
+  BITCLEAR(GPIOE->AFR[1], 29);
+  BITSET(GPIOE->AFR[1], 28);
+  BITCLEAR(GPIOE->AFR[1], 23); // Set GPIOE 13 to SPI1_SCK
+  BITSET(GPIOE->AFR[1], 22);
+  BITCLEAR(GPIOE->AFR[1], 21);
+  BITSET(GPIOE->AFR[1], 20);
 
-  GPIOE->AFR[0] |= (0b0010 << 12); // Set GPIOE 3 to TIM3_CH1
+  BITCLEAR(GPIOE->AFR[0], 15); // Set GPIOE 3 to TIM3_CH1
+  BITCLEAR(GPIOE->AFR[0], 14);
+  BITSET(GPIOE->AFR[0], 13);
+  BITCLEAR(GPIOE->AFR[0], 12);
 }
 
 void LPUART1_IRQHandler() {
@@ -90,7 +121,6 @@ int main() {
   initLCD();
 
   while (1) {
-    useLCD();
   }
 
   return 0;

@@ -1,4 +1,5 @@
 #include "timer.h"
+#include "bitmacro.h"
 #include "stm32l552xx.h"
 
 void delayMS(uint32_t val) {
@@ -10,7 +11,7 @@ void delayMS(uint32_t val) {
 
   for (unsigned int i = 0; i < val; ++i) {
     // Wait until COUNTFLAG is 1 (automatically reset to 0 on reads)
-    while (((SysTick->CTRL >> 16) & 1) == 0)
+    while (BITCHECK(SysTick->CTRL, 16) == 0)
       ;
   }
 }
@@ -35,14 +36,13 @@ void initTimers() {
   NVIC_SetPriority(TIM1_UP_IRQn, 0); // Set interrupt priority to 0 (max)
   NVIC_EnableIRQ(TIM1_UP_IRQn);      // Enable TIM1 IRQ
 
-  TIM3->PSC = 0;              // Period of 62.5 NS (16MHz / 1)
+  TIM3->PSC = 1;              // Period of 125 NS (16MHz / 2)
   TIM3->ARR = 100 - 1;        // Count 100 times
   TIM3->CCMR1 = (0b110 << 4); // Active for TIM3_CNT < TIM3_CCR1
-  TIM3->CCR1 = 0;             // Capture/compare value for channel 1
-  TIM3->CCER = (1 << 0);      // Enable capture/compare for channel 1
+  TIM3->CCR1 = 50;            // Capture/compare value for channel 1
+  TIM3->CCER |= (1 << 0);     // Enable capture/compare for channel 1
   TIM3->CNT = 0;              // Reset counter
-
-  TIM3->CR1 = (1 << 0); // Enable TIM3
+  TIM3->CR1 |= (1 << 0);      // Enable TIM3
 }
 
 void TIM1_UP_IRQHandler() {
