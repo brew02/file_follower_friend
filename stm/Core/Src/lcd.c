@@ -134,12 +134,12 @@ void initLCD() {
   // Ensure normal display mode is on
   sendLCDCommand(ST7735_NORON);
 
-  // Columns start at 0 and ends before 129
+  // Columns start at 0 and ends before 130
   sendLCDCommand(ST7735_CASET);
   sendLCDData(0x0);
   sendLCDData(0x0);
   sendLCDData(0x0);
-  sendLCDData(CFAF_WIDTH);
+  sendLCDData(CFAF_WIDTH + 1);
 
   // Rows start at 0 and ends before 129
   sendLCDCommand(ST7735_RASET);
@@ -151,7 +151,7 @@ void initLCD() {
   // Fill the screen with red pixels
   sendLCDCommand(ST7735_RAMWR);
 
-  for (int i = 0; i <= CFAF_WIDTH; ++i) {
+  for (int i = 0; i <= CFAF_WIDTH + 1; ++i) {
     for (int j = 0; j <= CFAF_HEIGHT; ++j) {
       sendLCDData(0x0);
       sendLCDData(0xF8);
