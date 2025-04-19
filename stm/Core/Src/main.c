@@ -92,7 +92,7 @@ void initGPIOs() {
 
 void LPUART1_IRQHandler() {
   // Check RXNE flag
-  if (((LPUART1->ISR >> 5) & 1) == 1) {
+  if (BITCHECK(LPUART1->ISR, 5) == 1) {
 
     // TODO: Store each character in a message buffer
 
@@ -102,11 +102,11 @@ void LPUART1_IRQHandler() {
 }
 
 void initLPUART1() {
-  LPUART1->BRR = 35555;      // BAUD rate of 115200 (256 * 16Mhz / 115200)
-  LPUART1->CR1 |= (1 << 5) | // Enable RXFIFO not empty interrupt
-                  (1 << 3) | // Enable transmitter
-                  (1 << 2) | // Enable receiver
-                  (1 << 0);  // Enable LPUART1
+  LPUART1->BRR = 35555;    // BAUD rate of 115200 (256 * 16Mhz / 115200)
+  BITSET(LPUART1->CR1, 5); // Enable RXFIFO not empty interrupt
+  BITSET(LPUART1->CR1, 3); // Enable transmitter
+  BITSET(LPUART1->CR1, 2); // Enable receiver
+  BITSET(LPUART1->CR1, 0); // Enable LPUART1
 
   NVIC_SetPriority(LPUART1_IRQn, 0); // Set interrupt priority to 0 (max)
   NVIC_EnableIRQ(LPUART1_IRQn);      // Enable LPUART1 IRQ

@@ -10,6 +10,7 @@ enum ST7735_COMMANDS {
   ST7735_SLPOUT = 0x11,
   ST7735_NORON = 0x13,
   ST7735_INVOFF = 0x20,
+  ST7735_GAMSET = 0x26,
   ST7735_DISPON = 0x29,
   ST7735_CASET = 0x2A,
   ST7735_RASET = 0x2B,
@@ -104,51 +105,65 @@ void initLCD() {
 
   // Reset lasts 120 ms max
   unsetLCDReset();
-  delayMS(120);
+  delayMS(150);
 
   // Exit sleep mode
   // Must wait 120 ms minimum before sending the next command
   sendLCDCommand(ST7735_SLPOUT);
   delayMS(200);
 
-  sendLCDCommand(0x26);
+  // Set a gamma curve of 2.2
+  sendLCDCommand(ST7735_GAMSET);
   sendLCDData(0x4);
 
-  sendLCDCommand(0xC0);
+  // Set GVDD to 4.30V
+  // Set AVDD to 2.5uA
+  sendLCDCommand(ST7735_PWCTR1);
   sendLCDData(0xA);
   sendLCDData(0x0);
 
+  // Use a 16-bit color pixel
   sendLCDCommand(ST7735_COLMOD);
   sendLCDData(0x5);
   delayMS(10);
 
+  // Ensure default memory data access control
   sendLCDCommand(ST7735_MADCTL);
-  sendLCDData(0x8);
+  sendLCDData(0x0);
 
+  // Ensure normal display mode is on
   sendLCDCommand(ST7735_NORON);
 
+  // Columns start at 0 and ends before 129
   sendLCDCommand(ST7735_CASET);
   sendLCDData(0x0);
-  sendLCDData(2);
   sendLCDData(0x0);
-  sendLCDData(129);
+  sendLCDData(0x0);
+  sendLCDData(CFAF_WIDTH);
 
-  sendLCDCommand(ST7735_CASET);
+  // Rows start at 0 and ends before 129
+  sendLCDCommand(ST7735_RASET);
   sendLCDData(0x0);
-  sendLCDData(3);
   sendLCDData(0x0);
-  sendLCDData(130);
+  sendLCDData(0x0);
+  sendLCDData(CFAF_HEIGHT);
 
-  // Fill the screen with black pixels
+  // Fill the screen with red pixels
   sendLCDCommand(ST7735_RAMWR);
 
-  for (int i = 0; i < 128; ++i) {
-    for (int j = 0; j < 128; ++j) {
+  for (int i = 0; i <= CFAF_WIDTH; ++i) {
+    for (int j = 0; j <= CFAF_HEIGHT; ++j) {
       sendLCDData(0x0);
       sendLCDData(0xF8);
     }
   }
 
   delayMS(10);
+
+  // Turn the display on
   sendLCDCommand(ST7735_DISPON);
+
+  delayMS(10);
+
+  unsetLCDCS();
 }
