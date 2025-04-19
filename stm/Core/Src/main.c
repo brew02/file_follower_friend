@@ -140,8 +140,8 @@ void BTNinit() {
   RCC->AHB2ENR |= (1 << 2); // Enable GPIOC
 
   // Set up the mode for button at C13
-  bitclear(GPIOC->MODER, 26); // Clear bit 26
-  bitclear(GPIOC->MODER, 27); // Clear bit 27
+  BITCLEAR(GPIOC->MODER, 26); // Clear bit 26
+  BITCLEAR(GPIOC->MODER, 27); // Clear bit 27
 
   // Set up PC13
   RCC->APB2ENR |= 1;            // Enable Clock to SYSCFG & EXTI
