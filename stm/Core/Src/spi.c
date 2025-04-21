@@ -22,7 +22,22 @@ void initSPI1() {
   BITSET(SPI1->CR1, 6);   // Enable SPI1
 }
 
-void writeSPI1(uint8_t val) {
-  // Write 8 bits
-  *(volatile uint8_t *)(&SPI1->DR) = val;
+void writedata(uint8_t c) {
+	GPIOE->ODR |= (1 << 11);
+
+	GPIOE->ODR &= ~(1 << 12);  // Set chip select
+
+	// Wait until the TXE flag is set
+	while (!(SPI1->SR & (1 << 1)));
+
+	// Send the 8-bit data to the SPI data register
+	SPI1->DR = c;
+
+	// Wait until the RXNE (Receive buffer not empty) flag is set
+	while (!(SPI1->SR & (1 << 0)));
+
+	// Read the received data to clear the RXNE flag
+	uint8_t dummy = SPI1->DR;
+
+	GPIOE->ODR |= (1 << 12);  // deactivate chip select
 }
