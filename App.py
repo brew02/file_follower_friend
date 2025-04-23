@@ -39,8 +39,31 @@ while True:
 com = ports[int(user_input) - 1]
 print(f"You chose: {com.device} - {com.description}")
 
-# TODO: Add option to select baudrate
-ser = serial.Serial(port=com.device, baudrate=115200, timeout=1)
+# Available baud rates
+BAUD_RATES = {
+    1: 9600,
+    2: 19200,
+    3: 38400,
+    4: 57600,
+    5: 115200
+}
+
+# Prompt user to choose a baud rate
+while True:
+    print("\nChoose a baudrate:")
+    for key, rate in BAUD_RATES.items():
+        print(f"{key}) {rate}")
+
+    user_input = input(f"Choose a baudrate (1-{len(BAUD_RATES)}): ")
+
+    if user_input.isdigit() and int(user_input) in BAUD_RATES:
+        baudrate = BAUD_RATES[int(user_input)]
+        print(f"Selected baudrate: {baudrate}\n")
+        break
+    else:
+        print("Invalid baudrate selected. Please choose a valid option.")
+
+ser = serial.Serial(port=com.device, baudrate=baudrate, timeout=1)
 time.sleep(2)
 ser.reset_input_buffer()
 

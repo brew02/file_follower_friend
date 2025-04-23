@@ -162,14 +162,25 @@ int main() {
   initLCD();
   BTNinit();
 
+  // Black
+  uint16_t bg = color24to16(0x0, 0x0, 0x0);
+
+  // White
+  uint16_t text = color24to16(0xFF, 0xFF, 0xFF);
+
+  renderString(0, 0, "Hello", text, bg);
   while (1) {
     // For testing in Python
+    //    if (flag == 1) {
+    //      for (int i = 0; i < bufIndex; i++) {
+    //        while (!(LPUART1->ISR & (1 << 7)))
+    //          ; // Wait for TXE
+    //        LPUART1->TDR = buf[i];
+    //      }
+    //      flag = 0;
+    //    }
     if (flag == 1) {
-      for (int i = 0; i < bufIndex; i++) {
-        while (!(LPUART1->ISR & (1 << 7)))
-          ; // Wait for TXE
-        LPUART1->TDR = buf[i];
-      }
+      // renderString(0, 0, buf, text, bg);
       flag = 0;
     }
   }

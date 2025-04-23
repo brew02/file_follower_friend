@@ -41,7 +41,7 @@ void initTimers() {
   BITSET(TIM3->CCMR1, 6); // Active for TIM3_CNT < TIM3_CCR1
   BITSET(TIM3->CCMR1, 5);
   BITCLEAR(TIM3->CCMR1, 4);
-  TIM3->CCR1 = 50;       // Capture/compare value for channel 1
+  TIM3->CCR1 = 100;      // Capture/compare value for channel 1
   BITSET(TIM3->CCER, 0); // Enable capture/compare for channel 1
   TIM3->CNT = 0;         // Reset counter
   BITSET(TIM3->CR1, 0);  // Enable TIM3
