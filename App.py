@@ -71,7 +71,7 @@ time.sleep(2)
 ser.reset_input_buffer()
 
 print("Listening...")
-current_path = Path(".")
+current_path = Path(".").resolve()
 
 while True:
     value = ser.readline()
@@ -85,17 +85,20 @@ while True:
 
             if string_value == 'y':
                 # Send current directory tree
+                print(f"Sending current directory")
                 file_tree = get_file_tree_string(r".")
                 ser.write(file_tree.encode('utf-8'))
                 ser.write(b'\n')
 
             elif string_value == 'g':
-                print("Sending parent directory...")
-                # Send the parent directory's file tree
-                parent_path = current_path.parent
-                file_tree = get_file_tree_string(parent_path)
-                ser.write(file_tree.encode('utf-8'))
-                ser.write(b'\n')
+                parent = current_path.parent
+                print(f"Moving to parent directory: {parent}")
+                if parent.exists() and parent.is_dir():
+                    current_path = parent
+                    tree = get_file_tree_string(current_path)
+                    ser.write(tree.encode('utf-8') + b'\n')
+                else:
+                    print(f"Error: Parent directory does not exist.\n")
 
             elif string_value:
                 directory_path = current_path / string_value
