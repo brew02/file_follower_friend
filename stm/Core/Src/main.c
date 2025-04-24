@@ -17,16 +17,12 @@
 #include "spi.h"
 #include "stm32l552xx.h"
 #include "timer.h"
-#include <string.h>
-
-int flag = 0;           // Flag for UART checking
-char buf[MAX_BUF_SIZE]; // Buffer to store received string
-int bufIndex = 0;       // Index to track the buffer position
+#include "uart.h"
 
 uint16_t bgColor = 0;
 uint16_t textColor = 0;
-FFFState state = FFF_MENU;
-FFFMenu menu = FFF_ACCESS_DIRS;
+FFFState state = STATE_MENU;
+FFFMenu menu = MENU_ACCESS_DIRS;
 
 /**
  * Enables peripheral clocks on the NUCLEO-L552ZE-Q board.
@@ -154,49 +150,6 @@ void initGPIOs() {
   BITSET(GPIOA->MODER, 8);
 }
 
-/**
- * Handles the LPUART1 interrupt (Note:
- * It must have this exact name).
- */
-void LPUART1_IRQHandler() {
-  // RXNE (Receive not empty)
-  if (LPUART1->ISR & (1 << 5)) {
-    char received_char = LPUART1->RDR;
-
-    if (bufIndex < MAX_BUF_SIZE - 1) {
-      buf[bufIndex++] = received_char;
-    }
-
-    if (received_char == '\n') { // end of message
-      buf[bufIndex] = '\0';
-      flag = 1;
-    }
-  }
-  // TXE (Transmit data register empty)
-  else if (LPUART1->ISR & (1 << 7)) {
-    if (txInProgress && txBuffer[txIndex] != '\0') {
-      LPUART1->TDR = txBuffer[txIndex++];
-    } else {
-      txInProgress = 0;
-      txIndex = 0;
-      LPUART1->CR1 &= ~(1 << 7); // disable TXE interrupt
-    }
-  }
-}
-
-/**
- * Initializes LPUART1 on the NUCLEO-L552ZE-Q board.
- */
-void initLPUART1() {
-  LPUART1->BRR = 35555;    // BAUD rate of 115200 (256 * 16Mhz / 115200)
-  BITSET(LPUART1->CR1, 5); // Enable RXFIFO not empty interrupt
-  BITSET(LPUART1->CR1, 3); // Enable transmitter
-  BITSET(LPUART1->CR1, 2); // Enable receiver
-  BITSET(LPUART1->CR1, 0); // Enable LPUART1
-  NVIC_SetPriority(LPUART1_IRQn, 0); // Set interrupt priority to 0 (max)
-  NVIC_EnableIRQ(LPUART1_IRQn);      // Enable LPUART1 IRQ
-}
-
 void initADC1() {
   // Check if the ADC is enabled
   if (BITCHECK(ADC1->CR, 0) == 1) {
@@ -263,22 +216,13 @@ int main() {
     uint16_t horz;
   } JOYSTICK;
 
+  char buffer[MAX_BUF_SIZE];
+  memset(buffer, 0, sizeof(buffer));
+  sendLPUART1("y");
+  size_t chars = receiveLPUART1(buffer, sizeof(buffer));
+
   JOYSTICK joystick;
   while (1) {
-    //  For testing in Python
-    //     if (flag == 1) {
-    //       for (int i = 0; i < bufIndex; i++) {
-    //         while (!(LPUART1->ISR & (1 << 7)))
-    //           ; // Wait for TXE
-    //         LPUART1->TDR = buf[i];
-    //       }
-    //       flag = 0;
-    //     }
-    if (flag == 1) {
-      // renderString(0, 0, buf, text, bg);
-      flag = 0;
-    }
-
     BITSET(ADC1->ISR, 6); // Clear the end of injected channel sequence flag
     BITSET(ADC1->CR, 3);  // Start an injected conversion
     // Wait for the injected sequence to finish
@@ -287,58 +231,43 @@ int main() {
     joystick.vert = ADC1->JDR1 & 0xFFF;
     joystick.horz = ADC1->JDR2 & 0xFFF;
 
-    if (joystick.vert >= 2400 && joystick.vert <= 2700) {
-      // This is considered "up" on the joystick
-      if (state == FFF_MENU) {
-        if (menu != FFF_ACCESS_DIRS) {
+    if (state == STATE_MENU) {
+      if (topButton || bottomButton) {
+        switch (menu) {
+        case MENU_ACCESS_DIRS: {
+
+          break;
+        }
+        case MENU_UPD_BRIGHT: {
+          if (topButton && brightness <= 95)
+            brightness += 5;
+          if (bottomButton && brightness >= 5)
+            brightness -= 5;
+          updateTIM3PWM(brightness);
+          break;
+        }
+        }
+
+        topButton = 0;
+        bottomButton = 0;
+      }
+
+      if (joystick.vert >= 2400 && joystick.vert <= 2700) {
+        // This is considered "up" on the joystick
+        if (menu != MENU_ACCESS_DIRS) {
           --menu;
         }
-      }
-    } else if (joystick.vert < 2000) {
-      // This is considered "down" on the joystick
-      if (state == FFF_MENU) {
-        if (menu != FFF_UPD_BRIGHT) {
+      } else if (joystick.vert < 2000) {
+        // This is considered "down" on the joystick
+        if (menu != MENU_UPD_BRIGHT) {
           ++menu;
         }
       }
-    }
 
-    renderMenu();
-
-    if (topButton || bottomButton) {
-      if (state == FFF_MENU && menu == FFF_UPD_BRIGHT) {
-        if (topButton && brightness <= 95) {
-          brightness += 5;
-          updateTIM3PWM(brightness);
-        }
-
-        if (bottomButton && brightness >= 5) {
-          brightness -= 5;
-          updateTIM3PWM(brightness);
-        }
-      }
-
-      topButton = 0;
-      bottomButton = 0;
+      renderMenu();
     }
 
     delayMS(100);
-    // For testing in Python
-    //        if (flag == 1) {
-    //          for (int i = 0; i < bufIndex; i++) {
-    //            while (!(LPUART1->ISR & (1 << 7)))
-    //              ; // Wait for TXE
-    //            LPUART1->TDR = buf[i];
-    //          }
-    //          flag = 0;
-    //        }
-    //    if (flag == 1) {
-    //      // renderString(0, 0, buf, text, bg);
-    //      flag = 0;
-    //    }
-    if (flag == 1) {
-      flag = 0;
-    }
   }
 
   return 0;

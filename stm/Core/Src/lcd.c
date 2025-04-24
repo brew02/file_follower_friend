@@ -447,14 +447,14 @@ uint16_t color24to16(uint8_t r, uint8_t g, uint8_t b) {
 
 void renderMenu() {
   char text[100] = {0};
-  if (state != FFF_MENU)
+  if (state != STATE_MENU)
     return;
 
   memset(text, 0, sizeof(text));
-  sprintf(text, "%s Directories", (menu == FFF_ACCESS_DIRS ? ">" : " "));
+  sprintf(text, "%s Directories", (menu == MENU_ACCESS_DIRS ? ">" : " "));
   renderString(0, 0, text, textColor, bgColor);
   memset(text, 0, sizeof(text));
-  sprintf(text, "%s Brightness: %0*d", (menu == FFF_UPD_BRIGHT ? ">" : " "), 3,
+  sprintf(text, "%s Brightness: %0*d", (menu == MENU_UPD_BRIGHT ? ">" : " "), 3,
           brightness);
 
   renderString(0, 1, text, textColor, bgColor);

@@ -13,13 +13,10 @@
 #include "main.h"
 #include "stm32l552xx.h"
 #include "timer.h"
+#include "uart.h"
 
 int topButton = 0;
 int bottomButton = 0;
-
-char txBuffer[MAX_BUF_SIZE];
-int txIndex = 0;
-int txInProgress = 0;
 
 void initButtons() {
   BITCLEAR(EXTI->EXTICR[1], 31); // Select GPIOE 7
@@ -84,11 +81,8 @@ void initButtons() {
  * It must have this exact name).
  */
 void EXTI13_IRQHandler() {
+  sendLPUART1("y");
   EXTI->RPR1 = (1 << 13); // Clear interrupt flag for PC13
-  strcpy(txBuffer, "y");  // adjust for other directories
-  txIndex = 0;
-  txInProgress = 1;
-  LPUART1->CR1 |= (1 << 7); // Enable TX interrupt
 }
 
 /**

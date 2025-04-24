@@ -57,7 +57,7 @@ while True:
     for key, rate in BAUD_RATES.items():
         print(f"{key}) {rate}")
 
-    user_input = input(f"Choose a baudrate (1-{len(BAUD_RATES)}): ")
+    user_input = input(f"Choose a baudrate (1 - {len(BAUD_RATES)}): ")
 
     if user_input.isdigit() and int(user_input) in BAUD_RATES:
         baudrate = BAUD_RATES[int(user_input)]
@@ -66,7 +66,7 @@ while True:
     else:
         print("Invalid baudrate selected. Please choose a valid option.")
 
-ser = serial.Serial(port=com.device, baudrate=baudrate, timeout=1)
+ser = serial.Serial(port=com.device, baudrate=baudrate, timeout=0)
 time.sleep(2)
 ser.reset_input_buffer()
 
@@ -88,7 +88,7 @@ while True:
                 print(f"Sending current directory")
                 file_tree = get_file_tree_string(r".")
                 ser.write(file_tree.encode('utf-8'))
-                ser.write(b'\n')
+                ser.write(b'\0')
 
             elif string_value == 'g':
                 parent = current_path.parent
