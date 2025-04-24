@@ -10,8 +10,14 @@
 
 #include <stdint.h>
 
+#define MAX_BUF_SIZE 1024 // Max string length
+
 extern int topButton;
 extern int bottomButton;
+
+extern char txBuffer[MAX_BUF_SIZE];
+extern int txIndex;
+extern int txInProgress;
 
 /**
  * Initializes external interrupts for various buttons.

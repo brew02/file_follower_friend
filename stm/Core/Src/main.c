@@ -19,13 +19,9 @@
 #include "timer.h"
 #include <string.h>
 
-#define MAX_BUF_SIZE 1024 // Max string length
-int flag = 0;             // Flag for UART checking
-char buf[MAX_BUF_SIZE];   // Buffer to store received string
-int bufIndex = 0;         // Index to track the buffer position
-char txBuffer[MAX_BUF_SIZE];
-int txIndex = 0;
-int txInProgress = 0;
+int flag = 0;           // Flag for UART checking
+char buf[MAX_BUF_SIZE]; // Buffer to store received string
+int bufIndex = 0;       // Index to track the buffer position
 
 uint16_t bgColor = 0;
 uint16_t textColor = 0;
@@ -186,15 +182,6 @@ void LPUART1_IRQHandler() {
       LPUART1->CR1 &= ~(1 << 7); // disable TXE interrupt
     }
   }
-}
-
-// Interrupt service routine for PC13
-void EXTI13_IRQHandler() {
-  EXTI->RPR1 = (1 << 13); // Clear interrupt flag for PC13
-  strcpy(txBuffer, "y");  // adjust for other directories
-  txIndex = 0;
-  txInProgress = 1;
-  LPUART1->CR1 |= (1 << 7); // Enable TX interrupt
 }
 
 /**
