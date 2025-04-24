@@ -240,18 +240,15 @@ static void setLCDData() {
  */
 static void sendLCDCommand(uint8_t command) {
   setLCDCS();
-  // Wait for SPI1 to not be busy and the transmit
-  // buffer to be empty
-  while (BITCHECK(SPI1->SR, 7) == 1 || BITCHECK(SPI1->SR, 1) == 0)
+  // Wait for SPI1 to not be busy
+  while (BITCHECK(SPI1->SR, 7) == 1)
     ;
 
   setLCDCommand();
-
   writeSPI1(command);
 
-  // Wait for SPI1 to not be busy and the transmit
-  // buffer to be empty
-  while (BITCHECK(SPI1->SR, 7) == 1 || BITCHECK(SPI1->SR, 1) == 0)
+  // Wait for SPI1 to not be busy
+  while (BITCHECK(SPI1->SR, 7) == 1)
     ;
 
   setLCDData();
@@ -266,19 +263,12 @@ static void sendLCDCommand(uint8_t command) {
  */
 static void sendLCDData(uint8_t data) {
   setLCDCS();
-  // Wait for SPI1 to not be busy and the transmit
-  // buffer to be empty
-  while (BITCHECK(SPI1->SR, 7) == 1 || BITCHECK(SPI1->SR, 1) == 0)
+  // Wait for SPI1 transmission FIFO to not be full
+  while (((SPI1->SR >> 11) & 3) == 3)
     ;
 
   setLCDData();
-
   writeSPI1(data);
-
-  // Wait for SPI1 to not be busy and the transmit
-  // buffer to be empty
-  while (BITCHECK(SPI1->SR, 7) == 1 || BITCHECK(SPI1->SR, 1) == 0)
-    ;
   unsetLCDCS();
 }
 
