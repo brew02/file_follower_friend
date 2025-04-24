@@ -12,8 +12,8 @@
 
 // Crystalfontz CFAF128128B-0145T
 enum CFAF128128B_0145T {
-  CFAF_HEIGHT = 128,
-  CFAF_WIDTH = 129,
+  CFAF_HEIGHT = 127,
+  CFAF_WIDTH = 127,
 };
 
 /**

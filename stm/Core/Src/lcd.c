@@ -295,17 +295,21 @@ static void sendLCDData(uint8_t data) {
  * that can be rendered to
  */
 static void setRenderFrame(uint8_t sX, uint8_t sY, uint8_t eX, uint8_t eY) {
+  // The first two horizontal pixels
+  // are cut-off on the display
   sendLCDCommand(ST7735_CASET);
   sendLCDData(0x0);
-  sendLCDData(sX);
+  sendLCDData(sX + 2);
   sendLCDData(0x0);
-  sendLCDData(eX);
+  sendLCDData(eX + 2);
 
+  // The first three vertical pixels
+  // are cut-off on the display
   sendLCDCommand(ST7735_RASET);
   sendLCDData(0x0);
-  sendLCDData(sY);
+  sendLCDData(sY + 3);
   sendLCDData(0x0);
-  sendLCDData(eY);
+  sendLCDData(eY + 3);
 }
 
 void initLCD() {
@@ -419,6 +423,8 @@ unsigned long renderString(uint8_t x, uint8_t y, const char *text,
     ++x;
     ++cnt;
   }
+
+  renderChar(CFAF_WIDTH - 5, CFAF_HEIGHT - 7, 'H', textColor, bgColor);
 
   return cnt;
 }
