@@ -45,7 +45,7 @@ enum ST7735_COMMANDS {
   ST7735_GMCTRN1 = 0xE1
 };
 
-int brightness = 100;
+int brightness = 20;
 
 static const uint8_t font[] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x3E, 0x5B, 0x4F, 0x5B, 0x3E, 0x3E, 0x6B,
@@ -433,8 +433,6 @@ unsigned long renderString(int x, int y, const char *text, uint16_t textColor,
     ++x;
     ++cnt;
   }
-
-  delayMS(1);
 
   return cnt;
 }

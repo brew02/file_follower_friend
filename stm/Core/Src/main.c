@@ -76,7 +76,7 @@ void enableClocks() {
 */
 
 /**
- * Initializes GPIOs G, E, and C on the NUCLEO-L552ZE-Q board.
+ * Initializes GPIOs G, E, C, and A on the NUCLEO-L552ZE-Q board.
  */
 void initGPIOs() {
   BITSET(PWR->CR2, 9);      // Enable power to GPIOG
@@ -119,12 +119,9 @@ void initGPIOs() {
   BITSET(GPIOE->OSPEEDR, 27); // Set GPIOE 13 to very high speed
   BITSET(GPIOE->OSPEEDR, 26);
 
-  BITCLEAR(GPIOE->OTYPER, 15); // Set GPIOE 7 to push-pull
-  BITCLEAR(GPIOE->OTYPER, 14);
-  BITCLEAR(GPIOE->OTYPER, 13); // Set GPIOE 6 to push-pull
-  BITCLEAR(GPIOE->OTYPER, 12);
-  BITCLEAR(GPIOE->OTYPER, 11); // Set GPIOE 5 to push-pull
-  BITCLEAR(GPIOE->OTYPER, 10);
+  BITCLEAR(GPIOE->OTYPER, 7); // Set GPIOE 7 to push-pull
+  BITCLEAR(GPIOE->OTYPER, 6); // Set GPIOE 6 to push-pull
+  BITCLEAR(GPIOE->OTYPER, 5); // Set GPIOE 5 to push-pull
 
   BITSET(GPIOE->PUPDR, 15); // Set GPIOE 7 to pull-down
   BITCLEAR(GPIOE->PUPDR, 14);
@@ -305,6 +302,23 @@ int main() {
     }
 
     renderMenu();
+
+    if (topButton || bottomButton) {
+      if (state == FFF_MENU && menu == FFF_UPD_BRIGHT) {
+        if (topButton && brightness <= 95) {
+          brightness += 5;
+          updateTIM3PWM(brightness);
+        }
+
+        if (bottomButton && brightness >= 5) {
+          brightness -= 5;
+          updateTIM3PWM(brightness);
+        }
+      }
+
+      topButton = 0;
+      bottomButton = 0;
+    }
 
     delayMS(100);
   }

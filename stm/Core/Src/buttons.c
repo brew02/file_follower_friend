@@ -12,6 +12,9 @@
 #include "stm32l552xx.h"
 #include "timer.h"
 
+int topButton = 0;
+int bottomButton = 0;
+
 void initButtons() {
   BITCLEAR(EXTI->EXTICR[1], 31); // Select GPIOE 7
   BITCLEAR(EXTI->EXTICR[1], 30);
@@ -93,13 +96,8 @@ void EXTI7_IRQHandler() {
  * It must have this exact name).
  */
 void EXTI6_IRQHandler() {
-  delayMS(10);
   // This is the bottom button on the BOOSTXL-EDUMKII
-  if (state == FFF_MENU && menu == FFF_UPD_BRIGHT && brightness >= 5) {
-    brightness -= 5;
-    updateTIM3PWM(brightness);
-  }
-  renderChar(CFAF_WIDTH - 5, CFAF_HEIGHT - 7, 'A', textColor, bgColor);
+  bottomButton = 1;
   BITSET(EXTI->RPR1, 6); // Clear interrupt flag for external interrupt 6
 }
 
@@ -108,12 +106,7 @@ void EXTI6_IRQHandler() {
  * It must have this exact name).
  */
 void EXTI5_IRQHandler() {
-  delayMS(10);
   // This is the top button on the BOOSTXL-EDUMKII
-  if (state == FFF_MENU && menu == FFF_UPD_BRIGHT && brightness <= 95) {
-    brightness += 5;
-    updateTIM3PWM(brightness);
-  }
-  renderChar(CFAF_WIDTH - 5, CFAF_HEIGHT - 7, 'B', textColor, bgColor);
+  topButton = 1;
   BITSET(EXTI->RPR1, 5); // Clear interrupt flag for external interrupt 5
 }

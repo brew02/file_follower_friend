@@ -10,6 +10,9 @@
 
 #include <stdint.h>
 
+extern int topButton;
+extern int bottomButton;
+
 /**
  * Initializes external interrupts for various buttons.
  */
