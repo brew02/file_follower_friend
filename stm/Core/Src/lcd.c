@@ -437,7 +437,6 @@ unsigned long renderString(int x, int y, const char *text, uint16_t textColor,
   return cnt;
 }
 
-// Convert a 24-bit color to 16-bit
 uint16_t color24to16(uint8_t r, uint8_t g, uint8_t b) {
   // Lose lower three bits of precision for red,
   // lower two bits for blue,
