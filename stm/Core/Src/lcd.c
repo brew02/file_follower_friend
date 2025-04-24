@@ -295,22 +295,22 @@ static void sendLCDData(uint8_t data) {
  * @param eY The ending vertical coordinate
  * that can be rendered to
  */
-static void setRenderFrame(uint8_t sX, uint8_t sY, uint8_t eX, uint8_t eY) {
+static void setRenderFrame(int sX, int sY, int eX, int eY) {
   // The first two horizontal pixels
   // are cut-off on the display
   sendLCDCommand(ST7735_CASET);
   sendLCDData(0x0);
-  sendLCDData(sX + 2);
+  sendLCDData((uint8_t)sX + 2);
   sendLCDData(0x0);
-  sendLCDData(eX + 2);
+  sendLCDData((uint8_t)eX + 2);
 
   // The first three vertical pixels
   // are cut-off on the display
   sendLCDCommand(ST7735_RASET);
   sendLCDData(0x0);
-  sendLCDData(sY + 3);
+  sendLCDData((uint8_t)sY + 3);
   sendLCDData(0x0);
-  sendLCDData(eY + 3);
+  sendLCDData((uint8_t)eY + 3);
 
   sendLCDCommand(ST7735_RAMWR);
 }
@@ -376,13 +376,12 @@ void initLCD() {
   sendLCDCommand(ST7735_DISPON);
 }
 
-void renderChar(uint8_t x, uint8_t y, char c, uint16_t charColor,
-                uint16_t bgColor) {
-  const uint8_t endX = x + 5;
-  const uint8_t endY = y + 7;
+void renderChar(int x, int y, char c, uint16_t charColor, uint16_t bgColor) {
+  const int endX = x + 5;
+  const int endY = y + 7;
 
-  if (x > CFAF_WIDTH || endX > CFAF_WIDTH || y > CFAF_HEIGHT ||
-      endY > CFAF_HEIGHT) {
+  if ((x < 0 || x > CFAF_WIDTH) || (endX < 0 || endX > CFAF_WIDTH) ||
+      (y < 0 || y > CFAF_HEIGHT) || (endY < 0 || endY > CFAF_HEIGHT)) {
     return;
   }
 
@@ -412,17 +411,17 @@ void renderChar(uint8_t x, uint8_t y, char c, uint16_t charColor,
   }
 }
 
-unsigned long renderString(uint8_t x, uint8_t y, const char *text,
-                           uint16_t textColor, uint16_t bgColor) {
+unsigned long renderString(int x, int y, const char *text, uint16_t textColor,
+                           uint16_t bgColor) {
   unsigned long cnt = 0;
-  if (y > 10)
+  if (y >= 16)
     return 0;
 
   // loop to run through string
   while (*text) {
-    if (x > 10)
+    if (x >= 21)
       return cnt;
-    renderChar(x * 6, y * 10, *text++, textColor, bgColor);
+    renderChar(x * 6, y * 8, *text++, textColor, bgColor);
     ++x;
     ++cnt;
   }

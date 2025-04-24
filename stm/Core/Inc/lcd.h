@@ -33,8 +33,7 @@ void initLCD();
  * @param charColor The color for the character
  * @param bgColor The color for the background
  */
-void renderChar(uint8_t x, uint8_t y, char c, uint16_t charColor,
-                uint16_t bgColor);
+void renderChar(int x, int y, char c, uint16_t charColor, uint16_t bgColor);
 
 /**
  * Renders a string of characters to the LCD screen on the
@@ -48,8 +47,8 @@ void renderChar(uint8_t x, uint8_t y, char c, uint16_t charColor,
  *
  * @return The number of characters rendered
  */
-unsigned long renderString(uint8_t x, uint8_t y, const char *text,
-                           uint16_t textColor, uint16_t bgColor);
+unsigned long renderString(int x, int y, const char *text, uint16_t textColor,
+                           uint16_t bgColor);
 
 /**
  * Converts a 24-bit color to a 16-bit color.
