@@ -6,8 +6,13 @@
  * @author Brodie Abrew & Lucas Berry
  */
 
-#include "lcd.h"
+#include <stdlib.h>
+#include <string.h>
+
 #include "bitmacro.h"
+#include "cmsis_gcc.h"
+#include "lcd.h"
+#include "main.h"
 #include "spi.h"
 #include "stm32l552xx.h"
 #include "timer.h"
@@ -39,6 +44,8 @@ enum ST7735_COMMANDS {
   ST7735_GMCTRP1 = 0xE0,
   ST7735_GMCTRN1 = 0xE1
 };
+
+int brightness = 100;
 
 static const uint8_t font[] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x3E, 0x5B, 0x4F, 0x5B, 0x3E, 0x3E, 0x6B,
@@ -315,7 +322,7 @@ static void setRenderFrame(int sX, int sY, int eX, int eY) {
   sendLCDCommand(ST7735_RAMWR);
 }
 
-void initLCD() {
+void initLCD(uint16_t bgColor) {
   setLCDCS();
   setLCDData();
 
@@ -365,8 +372,9 @@ void initLCD() {
 
   for (int i = 0; i <= CFAF_WIDTH; ++i) {
     for (int j = 0; j <= CFAF_HEIGHT; ++j) {
-      sendLCDData(0x0);
-      sendLCDData(0xF8);
+      // Send background color
+      sendLCDData((uint8_t)(bgColor >> 8));
+      sendLCDData((uint8_t)(bgColor));
     }
   }
 
@@ -409,6 +417,8 @@ void renderChar(int x, int y, char c, uint16_t charColor, uint16_t bgColor) {
     sendLCDData((uint8_t)(bgColor));
     line <<= 1; // Move to the next line
   }
+
+  sendLCDCommand(ST7735_NOP);
 }
 
 unsigned long renderString(int x, int y, const char *text, uint16_t textColor,
@@ -418,13 +428,13 @@ unsigned long renderString(int x, int y, const char *text, uint16_t textColor,
     return 0;
 
   // loop to run through string
-  while (*text) {
-    if (x >= 21)
-      return cnt;
+  while (*text && x < 21) {
     renderChar(x * 6, y * 8, *text++, textColor, bgColor);
     ++x;
     ++cnt;
   }
+
+  delayMS(1);
 
   return cnt;
 }
@@ -436,4 +446,19 @@ uint16_t color24to16(uint8_t r, uint8_t g, uint8_t b) {
   // and lower three bits for green
   return ((((uint16_t)r & 0xF8) << 8) | (((uint16_t)g & 0xFC) << 3) |
           ((uint16_t)b >> 3));
+}
+
+void renderMenu() {
+  char text[100] = {0};
+  if (state != FFF_MENU)
+    return;
+
+  memset(text, 0, sizeof(text));
+  sprintf(text, "%s Directories", (menu == FFF_ACCESS_DIRS ? ">" : " "));
+  renderString(0, 0, text, textColor, bgColor);
+  memset(text, 0, sizeof(text));
+  sprintf(text, "%s Brightness: %0*d", (menu == FFF_UPD_BRIGHT ? ">" : " "), 3,
+          brightness);
+
+  renderString(0, 1, text, textColor, bgColor);
 }

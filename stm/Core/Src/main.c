@@ -13,6 +13,7 @@
 #include "bitmacro.h"
 #include "buttons.h"
 #include "lcd.h"
+#include "main.h"
 #include "spi.h"
 #include "stm32l552xx.h"
 #include "timer.h"
@@ -24,6 +25,8 @@ int bufIndex = 0;         // Index to track the buffer position
 
 uint16_t bgColor = 0;
 uint16_t textColor = 0;
+FFFState state = FFF_MENU;
+FFFMenu menu = FFF_ACCESS_DIRS;
 
 /**
  * Enables peripheral clocks on the NUCLEO-L552ZE-Q board.
@@ -115,6 +118,20 @@ void initGPIOs() {
   BITSET(GPIOE->OSPEEDR, 30);
   BITSET(GPIOE->OSPEEDR, 27); // Set GPIOE 13 to very high speed
   BITSET(GPIOE->OSPEEDR, 26);
+
+  BITCLEAR(GPIOE->OTYPER, 15); // Set GPIOE 7 to push-pull
+  BITCLEAR(GPIOE->OTYPER, 14);
+  BITCLEAR(GPIOE->OTYPER, 13); // Set GPIOE 6 to push-pull
+  BITCLEAR(GPIOE->OTYPER, 12);
+  BITCLEAR(GPIOE->OTYPER, 11); // Set GPIOE 5 to push-pull
+  BITCLEAR(GPIOE->OTYPER, 10);
+
+  BITSET(GPIOE->PUPDR, 15); // Set GPIOE 7 to pull-down
+  BITCLEAR(GPIOE->PUPDR, 14);
+  BITSET(GPIOE->PUPDR, 13); // Set GPIOE 6 to pull-down
+  BITCLEAR(GPIOE->PUPDR, 12);
+  BITSET(GPIOE->PUPDR, 11); // Set GPIOE 5 to pull-down
+  BITCLEAR(GPIOE->PUPDR, 10);
 
   BITCLEAR(GPIOE->AFR[1], 31); // Set GPIOE 15 to SPI1_MOSI
   BITSET(GPIOE->AFR[1], 30);
@@ -228,25 +245,26 @@ void initADC1() {
  * The main entry-point for the micro-controller.
  */
 int main() {
+  // Black
+  bgColor = color24to16(0x0, 0x0, 0x0);
+  // White
+  textColor = color24to16(0xFF, 0xFF, 0xFF);
+
   enableClocks();
   initGPIOs();
   initLPUART1();
-  initTimers();
+  initTimers(brightness);
   initSPI1();
-  initLCD();
+  initLCD(bgColor);
   initButtons();
   initADC1();
 
-  // Black
-  bgColor = color24to16(0x0, 0x0, 0x0);
+  typedef struct {
+    uint16_t vert;
+    uint16_t horz;
+  } JOYSTICK;
 
-  // White
-  textColor = color24to16(0xFF, 0xFF, 0xFF);
-  renderString(0, 0, "Hello", textColor, bgColor);
-  renderString(0, 1, "World", textColor, bgColor);
-
-  uint16_t joystick[2];
-  char buffer[100];
+  JOYSTICK joystick;
   while (1) {
     //  For testing in Python
     //     if (flag == 1) {
@@ -267,17 +285,26 @@ int main() {
     // Wait for the injected sequence to finish
     while (BITCHECK(ADC1->ISR, 6) == 0)
       ;
-    // Read the vertical joystick position
-    joystick[0] = ADC1->JDR1 & 0xFFF;
-    // Read the horizontal joystick position
-    joystick[1] = ADC1->JDR2 & 0xFFF;
+    joystick.vert = ADC1->JDR1 & 0xFFF;
+    joystick.horz = ADC1->JDR2 & 0xFFF;
 
-    memset(buffer, 0, sizeof(buffer));
-    sprintf(buffer, "V: %0*u", 4, joystick[0]);
-    renderString(0, 2, buffer, textColor, bgColor);
-    memset(buffer, 0, sizeof(buffer));
-    sprintf(buffer, "H: %0*u", 4, joystick[1]);
-    renderString(0, 3, buffer, textColor, bgColor);
+    if (joystick.vert >= 2400 && joystick.vert <= 2700) {
+      // This is considered "up" on the joystick
+      if (state == FFF_MENU) {
+        if (menu != FFF_ACCESS_DIRS) {
+          --menu;
+        }
+      }
+    } else if (joystick.vert < 2000) {
+      // This is considered "down" on the joystick
+      if (state == FFF_MENU) {
+        if (menu != FFF_UPD_BRIGHT) {
+          ++menu;
+        }
+      }
+    }
+
+    renderMenu();
 
     delayMS(100);
   }

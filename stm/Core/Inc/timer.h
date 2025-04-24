@@ -24,8 +24,17 @@ void delayMS(uint32_t val);
 void resetTIM1Count();
 
 /**
- * Initializes TIM1 and TIM3.
+ * Initializes TIM3 with the PWM value specified.
+ *
+ * @param pwm The duty cycle
  */
-void initTimers();
+void initTimers(int pwm);
+
+/**
+ * Updates TIM3 with the PWM value specified.
+ *
+ * @param pwm The duty cycle
+ */
+void updateTIM3PWM(int pwm);
 
 #endif

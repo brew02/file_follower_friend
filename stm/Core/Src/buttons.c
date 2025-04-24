@@ -8,7 +8,9 @@
 #include "buttons.h"
 #include "bitmacro.h"
 #include "lcd.h"
+#include "main.h"
 #include "stm32l552xx.h"
+#include "timer.h"
 
 void initButtons() {
   BITCLEAR(EXTI->EXTICR[1], 31); // Select GPIOE 7
@@ -82,6 +84,7 @@ void EXTI13_IRQHandler() {
  * It must have this exact name).
  */
 void EXTI7_IRQHandler() {
+  // This is the joystick push button
   BITSET(EXTI->RPR1, 7); // Clear interrupt flag for external interrupt 7
 }
 
@@ -90,6 +93,12 @@ void EXTI7_IRQHandler() {
  * It must have this exact name).
  */
 void EXTI6_IRQHandler() {
+  delayMS(10);
+  // This is the bottom button on the BOOSTXL-EDUMKII
+  if (state == FFF_MENU && menu == FFF_UPD_BRIGHT && brightness >= 5) {
+    brightness -= 5;
+    updateTIM3PWM(brightness);
+  }
   renderChar(CFAF_WIDTH - 5, CFAF_HEIGHT - 7, 'A', textColor, bgColor);
   BITSET(EXTI->RPR1, 6); // Clear interrupt flag for external interrupt 6
 }
@@ -99,6 +108,12 @@ void EXTI6_IRQHandler() {
  * It must have this exact name).
  */
 void EXTI5_IRQHandler() {
+  delayMS(10);
+  // This is the top button on the BOOSTXL-EDUMKII
+  if (state == FFF_MENU && menu == FFF_UPD_BRIGHT && brightness <= 95) {
+    brightness += 5;
+    updateTIM3PWM(brightness);
+  }
   renderChar(CFAF_WIDTH - 5, CFAF_HEIGHT - 7, 'B', textColor, bgColor);
   BITSET(EXTI->RPR1, 5); // Clear interrupt flag for external interrupt 5
 }

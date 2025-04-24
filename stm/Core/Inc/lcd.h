@@ -18,11 +18,14 @@ enum CFAF128128B_0145T {
 
 extern uint16_t bgColor;
 extern uint16_t textColor;
+extern int brightness;
 
 /**
  * Initializes the LCD screen on the BOOSTXL-EDUMKII.
+ *
+ * @param bgColor - The initial background color
  */
-void initLCD();
+void initLCD(uint16_t bgColor);
 
 /**
  * Renders a character to the LCD screen on the BOOSTXL-EDUMKII.
@@ -61,5 +64,10 @@ unsigned long renderString(int x, int y, const char *text, uint16_t textColor,
  * @return The converted 16-bit color
  */
 uint16_t color24to16(uint8_t r, uint8_t g, uint8_t b);
+
+/**
+ * Renders the menu if in the menu state.
+ */
+void renderMenu();
 
 #endif
