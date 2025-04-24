@@ -17,11 +17,15 @@
 #include "spi.h"
 #include "stm32l552xx.h"
 #include "timer.h"
+#include <string.h>
 
 #define MAX_BUF_SIZE 1024 // Max string length
 int flag = 0;             // Flag for UART checking
 char buf[MAX_BUF_SIZE];   // Buffer to store received string
 int bufIndex = 0;         // Index to track the buffer position
+char txBuffer[MAX_BUF_SIZE];
+int txIndex = 0;
+int txInProgress = 0;
 
 uint16_t bgColor = 0;
 uint16_t textColor = 0;
@@ -174,12 +178,23 @@ void LPUART1_IRQHandler() {
   }
   // TXE (Transmit data register empty)
   else if (LPUART1->ISR & (1 << 7)) {
-    if (flag == 0) {
-      LPUART1->TDR = 'y';
-      flag = 1;
+    if (txInProgress && txBuffer[txIndex] != '\0') {
+      LPUART1->TDR = txBuffer[txIndex++];
+    } else {
+      txInProgress = 0;
+      txIndex = 0;
       LPUART1->CR1 &= ~(1 << 7); // disable TXE interrupt
     }
   }
+}
+
+// Interrupt service routine for PC13
+void EXTI13_IRQHandler() {
+  EXTI->RPR1 = (1 << 13); // Clear interrupt flag for PC13
+  strcpy(txBuffer, "y");  // adjust for other directories
+  txIndex = 0;
+  txInProgress = 1;
+  LPUART1->CR1 |= (1 << 7); // Enable TX interrupt
 }
 
 /**
@@ -321,6 +336,22 @@ int main() {
     }
 
     delayMS(100);
+    // For testing in Python
+    //        if (flag == 1) {
+    //          for (int i = 0; i < bufIndex; i++) {
+    //            while (!(LPUART1->ISR & (1 << 7)))
+    //              ; // Wait for TXE
+    //            LPUART1->TDR = buf[i];
+    //          }
+    //          flag = 0;
+    //        }
+    //    if (flag == 1) {
+    //      // renderString(0, 0, buf, text, bg);
+    //      flag = 0;
+    //    }
+    if (flag == 1) {
+      flag = 0;
+    }
   }
 
   return 0;
