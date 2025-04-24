@@ -7,6 +7,9 @@
  * @author Brodie Abrew & Lucas Berry
  */
 
+#include <stdio.h>
+#include <string.h>
+
 #include "bitmacro.h"
 #include "buttons.h"
 #include "lcd.h"
@@ -29,16 +32,21 @@ void enableClocks() {
   BITSET(RCC->APB1ENR1, 28); // Power interface clock enable
   BITSET(RCC->APB1ENR1, 1);  // TIM3 clock enable
 
-  BITSET(RCC->AHB2ENR, 6); // GPIOG clock enable
-  BITSET(RCC->AHB2ENR, 4); // GPIOE clock enable
-  BITSET(RCC->AHB2ENR, 2); // GPIOC clock enable
+  BITSET(RCC->AHB1ENR, 2); // DMAMUX1 clock enable
+  BITSET(RCC->AHB1ENR, 0); // DMA1 clock enable
+
+  BITSET(RCC->AHB2ENR, 13); // ADC clock enable
+  BITSET(RCC->AHB2ENR, 6);  // GPIOG clock enable
+  BITSET(RCC->AHB2ENR, 4);  // GPIOE clock enable
+  BITSET(RCC->AHB2ENR, 2);  // GPIOC clock enable
 
   BITSET(RCC->APB1ENR2, 0); // LPUART1 clock enable
 
   BITSET(RCC->APB2ENR, 12); // SPI1 clock enable
-  BITSET(RCC->APB2ENR, 11); // TIM1 clock enable
   BITSET(RCC->APB2ENR, 0);  // SYSCFG clock enable
 
+  BITSET(RCC->CCIPR1, 29); // System clock for ADCs
+  BITSET(RCC->CCIPR1, 28);
   BITSET(RCC->CCIPR1, 11); // HSI16 clock for LPUART1
   BITCLEAR(RCC->CCIPR1, 10);
 
@@ -58,8 +66,8 @@ void enableClocks() {
   GPIOE 12              <-> J2.13 (LCD SPI CS)
   GPIOE 11              <-> J4.31 (LCD RS)
   GPIOE 10              <-> J2.17 (LCD RST)
-  GPIOE 9               <-> J1.2  (Joystick Hor(x))
-  GPIOE 8               <-> J3.26 (Joystick Ver(y))
+  GPIOC 1               <-> J1.2  (Joystick Hor(x))
+  GPIOC 0               <-> J3.26 (Joystick Ver(y))
   GPIOE 7               <-> J1.5  (Joystick Select)
   GPIOE 6               <-> J4.32 (Button 2)
   GPIOE 5               <-> J4.33 (Button 1)
@@ -96,10 +104,6 @@ void initGPIOs() {
   BITSET(GPIOE->MODER, 22);
   BITCLEAR(GPIOE->MODER, 21); // Set GPIOE 10 to output
   BITSET(GPIOE->MODER, 20);
-  BITSET(GPIOE->MODER, 19); // Set GPIOE 9 to analog input
-  BITSET(GPIOE->MODER, 18);
-  BITSET(GPIOE->MODER, 17); // Set GPIOE 8 to analog input
-  BITSET(GPIOE->MODER, 16);
   BITCLEAR(GPIOE->MODER, 15); // Set GPIOE 7 to input
   BITCLEAR(GPIOE->MODER, 14);
   BITCLEAR(GPIOE->MODER, 13); // Set GPIOE 6 to input
@@ -130,6 +134,12 @@ void initGPIOs() {
 
   BITCLEAR(GPIOC->MODER, 27); // Set GPIOC 13 to input
   BITCLEAR(GPIOC->MODER, 26);
+
+  BITSET(GPIOC->MODER, 3); // Set GPIOC 1 to analog input
+  BITSET(GPIOC->MODER, 2);
+
+  BITSET(GPIOC->MODER, 1); // Set GPIOC 0 to analog input
+  BITSET(GPIOC->MODER, 0);
 }
 
 /**
@@ -173,8 +183,74 @@ void initLPUART1() {
   NVIC_EnableIRQ(LPUART1_IRQn);      // Enable LPUART1 IRQ
 }
 
+uint16_t joystick[2] = {0, 0};
+
+void initADC1() {
+  DMA1->IFCR |= 0b1111;            // Clear all interrupts for channel 1
+  BITCLEAR(DMA1_Channel1->CCR, 0); // Disable channel 1
+  while (BITCHECK(DMA1_Channel1->CCR, 0) == 1)
+    ;                   // Wait for channel 1 to be disabled
+  DMA1->IFCR |= 0b1111; // Clear all interrupts for channel 1
+
+  DMA1_Channel1->CPAR = (volatile unsigned long)&ADC1->DR;
+  DMA1_Channel1->CM0AR = (volatile unsigned long)joystick;
+  DMA1_Channel1->CNDTR = 2;
+
+  BITCLEAR(DMA1_Channel1->CCR, 14); // Disable memory-to-memory mode
+  BITCLEAR(DMA1_Channel1->CCR, 11); // Set 16-bit memory size
+  BITSET(DMA1_Channel1->CCR, 10);
+  BITCLEAR(DMA1_Channel1->CCR, 9); // Set 16-bit peripheral size
+  BITSET(DMA1_Channel1->CCR, 8);
+  BITSET(DMA1_Channel1->CCR, 7);   // Enable increment memory mode
+  BITSET(DMA1_Channel1->CCR, 5);   // Enable circular mode
+  BITCLEAR(DMA1_Channel1->CCR, 4); // Read from peripheral to memory
+
+  DMAMUX1_Channel0->CCR = 5; // Triggered by ADC
+
+  BITSET(DMA1_Channel1->CCR, 0); // Enable channel 1
+
+  BITCLEAR(ADC1->CR, 29); // Disable ADC deep-power down
+  BITSET(ADC1->CR, 28);   // Enable ADC voltage regulator
+
+  delayMS(10);
+
+  BITSET(ADC1->CFGR, 13); // Enable continuous conversion mode
+  BITSET(ADC1->CFGR, 1);  // Use DMA circular mode
+  BITSET(ADC1->CFGR, 0);  // Enable DMA
+
+  BITCLEAR(ADC1->SQR1, 16); // Read channel 2
+  BITCLEAR(ADC1->SQR1, 15);
+  BITCLEAR(ADC1->SQR1, 14);
+  BITSET(ADC1->SQR1, 13);
+  BITCLEAR(ADC1->SQR1, 12);
+
+  BITCLEAR(ADC1->SQR1, 10); // Read channel 1
+  BITCLEAR(ADC1->SQR1, 9);
+  BITCLEAR(ADC1->SQR1, 8);
+  BITCLEAR(ADC1->SQR1, 7);
+  BITSET(ADC1->SQR1, 6);
+
+  BITCLEAR(ADC1->SQR1, 3); // Read 2 channels
+  BITCLEAR(ADC1->SQR1, 2);
+  BITCLEAR(ADC1->SQR1, 1);
+  BITSET(ADC1->SQR1, 0);
+
+  BITSET(ADC1->SMPR1, 8); // Sample channel 2 for 92.5 ADC clock cycles
+  BITCLEAR(ADC1->SMPR1, 7);
+  BITSET(ADC1->SMPR1, 6);
+  BITSET(ADC1->SMPR1, 5); // Sample channel 1 for 92.5 ADC clock cycles
+  BITCLEAR(ADC1->SMPR1, 4);
+  BITSET(ADC1->SMPR1, 3);
+
+  BITSET(ADC1->CR, 0);                // Enable ADC1
+  while (BITCHECK(ADC1->ISR, 0) == 0) // Wait for ADC1 to be ready
+    ;
+
+  BITSET(ADC1->CR, 2); // Start regular conversions of ADC1
+}
+
 /**
- * The main entry-point for the microcontroller.
+ * The main entry-point for the micro-controller.
  */
 int main() {
   enableClocks();
@@ -184,28 +260,32 @@ int main() {
   initSPI1();
   initLCD();
   initButtons();
+  initADC1();
 
   // Black
   bgColor = color24to16(0x0, 0x0, 0x0);
 
   // White
   textColor = color24to16(0xFF, 0xFF, 0xFF);
-
   renderString(0, 0, "Hello", textColor, bgColor);
+
+  char buf[100];
   while (1) {
-    // For testing in Python
-    //    if (flag == 1) {
-    //      for (int i = 0; i < bufIndex; i++) {
-    //        while (!(LPUART1->ISR & (1 << 7)))
-    //          ; // Wait for TXE
-    //        LPUART1->TDR = buf[i];
-    //      }
-    //      flag = 0;
-    //    }
+    //  For testing in Python
+    //     if (flag == 1) {
+    //       for (int i = 0; i < bufIndex; i++) {
+    //         while (!(LPUART1->ISR & (1 << 7)))
+    //           ; // Wait for TXE
+    //         LPUART1->TDR = buf[i];
+    //       }
+    //       flag = 0;
+    //     }
     if (flag == 1) {
       // renderString(0, 0, buf, text, bg);
       flag = 0;
     }
+
+    delayMS(100);
   }
 
   return 0;

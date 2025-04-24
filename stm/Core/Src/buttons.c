@@ -23,7 +23,7 @@ void initButtons() {
   BITSET(EXTI->IMR1, 7);  // Disable interrupt mask for external interrupt 7
 
   NVIC_SetPriority(EXTI7_IRQn, 0); // Set priority for external interrupt 7
-  NVIC_EnableIRQ(EXTI7_IRQn);
+  NVIC_EnableIRQ(EXTI7_IRQn);      // Enable external interrupt 7
 
   BITCLEAR(EXTI->EXTICR[1], 23); // Select GPIOE 6
   BITCLEAR(EXTI->EXTICR[1], 22);
@@ -37,7 +37,7 @@ void initButtons() {
   BITSET(EXTI->IMR1, 6);  // Disable interrupt mask for external interrupt 6
 
   NVIC_SetPriority(EXTI6_IRQn, 0); // Set priority for external interrupt 6
-  NVIC_EnableIRQ(EXTI6_IRQn);
+  NVIC_EnableIRQ(EXTI6_IRQn);      // Enable external interrupt 6
 
   BITCLEAR(EXTI->EXTICR[1], 15); // Select GPIOE 5
   BITCLEAR(EXTI->EXTICR[1], 14);
@@ -51,7 +51,7 @@ void initButtons() {
   BITSET(EXTI->IMR1, 5);  // Disable interrupt mask for external interrupt 5
 
   NVIC_SetPriority(EXTI5_IRQn, 0); // Set priority for external interrupt 5
-  NVIC_EnableIRQ(EXTI5_IRQn);
+  NVIC_EnableIRQ(EXTI5_IRQn);      // Enable external interrupt 5
 
   BITCLEAR(EXTI->EXTICR[3], 15); // Select GPIOC 13
   BITCLEAR(EXTI->EXTICR[3], 14);
@@ -65,7 +65,7 @@ void initButtons() {
   BITSET(EXTI->IMR1, 13);  // Disable interrupt mask for external interrupt 13
 
   NVIC_SetPriority(EXTI13_IRQn, 0); // Set priority for external interrupt 13
-  NVIC_EnableIRQ(EXTI13_IRQn);
+  NVIC_EnableIRQ(EXTI13_IRQn);      // Enable external interrupt 13
 }
 
 /**

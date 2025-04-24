@@ -19,6 +19,7 @@ enum ST7735_COMMANDS {
   ST7735_NORON = 0x13,
   ST7735_INVOFF = 0x20,
   ST7735_GAMSET = 0x26,
+  ST7735_DISPOFF = 0x28,
   ST7735_DISPON = 0x29,
   ST7735_CASET = 0x2A,
   ST7735_RASET = 0x2B,
@@ -310,23 +311,33 @@ static void setRenderFrame(uint8_t sX, uint8_t sY, uint8_t eX, uint8_t eY) {
   sendLCDData(sY + 3);
   sendLCDData(0x0);
   sendLCDData(eY + 3);
+
+  sendLCDCommand(ST7735_RAMWR);
 }
 
 void initLCD() {
+  setLCDCS();
   setLCDData();
 
   // Reset signal must be set for 10 μs minimum
   setLCDReset();
-  delayMS(50);
+  delayMS(1);
 
   // Reset lasts 120 ms max
   unsetLCDReset();
-  delayMS(150);
+  delayMS(120);
+  unsetLCDCS();
+
+  sendLCDCommand(ST7735_SWRESET);
+  delayMS(120);
 
   // Exit sleep mode
   // Must wait 120 ms minimum before sending the next command
   sendLCDCommand(ST7735_SLPOUT);
-  delayMS(200);
+  delayMS(120);
+
+  sendLCDCommand(ST7735_DISPOFF);
+  delayMS(120);
 
   // Set a gamma curve of 2.2
   sendLCDCommand(ST7735_GAMSET);
@@ -352,9 +363,6 @@ void initLCD() {
 
   setRenderFrame(0, 0, CFAF_WIDTH, CFAF_HEIGHT);
 
-  // Fill the screen with red pixels
-  sendLCDCommand(ST7735_RAMWR);
-
   for (int i = 0; i <= CFAF_WIDTH; ++i) {
     for (int j = 0; j <= CFAF_HEIGHT; ++j) {
       sendLCDData(0x0);
@@ -366,8 +374,6 @@ void initLCD() {
 
   // Turn the display on
   sendLCDCommand(ST7735_DISPON);
-
-  delayMS(10);
 }
 
 void renderChar(uint8_t x, uint8_t y, char c, uint16_t charColor,
@@ -381,11 +387,10 @@ void renderChar(uint8_t x, uint8_t y, char c, uint16_t charColor,
   }
 
   setRenderFrame(x, y, endX, endY);
-  sendLCDCommand(ST7735_RAMWR);
 
   uint8_t line = 1; // Start with the first row
-  // Loop through each row (8 rows for each character)
-  for (int row = 0; row < 8; ++row) {
+  // Loop through each row (7 rows for each character)
+  for (int row = 0; row < 7; ++row) {
 
     // 5 columns for each character in the font
     for (int col = 0; col < 5; ++col) {
