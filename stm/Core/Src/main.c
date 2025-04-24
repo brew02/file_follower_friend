@@ -8,6 +8,7 @@
  */
 
 #include "bitmacro.h"
+#include "buttons.h"
 #include "lcd.h"
 #include "spi.h"
 #include "stm32l552xx.h"
@@ -17,6 +18,9 @@
 int flag = 0;             // Flag for UART checking
 char buf[MAX_BUF_SIZE];   // Buffer to store received string
 int bufIndex = 0;         // Index to track the buffer position
+
+uint16_t bgColor = 0;
+uint16_t textColor = 0;
 
 /**
  * Enables peripheral clocks on the NUCLEO-L552ZE-Q board.
@@ -157,15 +161,6 @@ void LPUART1_IRQHandler() {
 }
 
 /**
- * Handles external interrupt 13 (Note:
- * It must have this exact name).
- */
-void EXTI13_IRQHandler() {
-  EXTI->RPR1 = (1 << 13);   // Clear interrupt flag for PC13
-  LPUART1->CR1 |= (1 << 7); // Enable TX interrupt
-}
-
-/**
  * Initializes LPUART1 on the NUCLEO-L552ZE-Q board.
  */
 void initLPUART1() {
@@ -179,20 +174,6 @@ void initLPUART1() {
 }
 
 /**
- * Initializes the user button on the NUCLEO-L552ZE-Q board.
- */
-void BTNinit() {
-  // Set up PC13
-  RCC->APB2ENR |= 1;            // Enable Clock to SYSCFG & EXTI
-  EXTI->EXTICR[3] = (0x2) << 8; // Select PC13
-  EXTI->RTSR1 |= 1 << 13;       // Trigger on rising edge of PC13
-  EXTI->IMR1 |= 1 << 13;        // Interrupt mask disable for PC13
-
-  NVIC_SetPriority(EXTI13_IRQn, 0); // Set priority for PC13
-  NVIC_EnableIRQ(EXTI13_IRQn);
-}
-
-/**
  * The main entry-point for the microcontroller.
  */
 int main() {
@@ -202,15 +183,15 @@ int main() {
   initTimers();
   initSPI1();
   initLCD();
-  BTNinit();
+  initButtons();
 
   // Black
-  uint16_t bg = color24to16(0x0, 0x0, 0x0);
+  bgColor = color24to16(0x0, 0x0, 0x0);
 
   // White
-  uint16_t text = color24to16(0xFF, 0xFF, 0xFF);
+  textColor = color24to16(0xFF, 0xFF, 0xFF);
 
-  renderString(0, 0, "Hello", text, bg);
+  renderString(0, 0, "Hello", textColor, bgColor);
   while (1) {
     // For testing in Python
     //    if (flag == 1) {

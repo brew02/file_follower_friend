@@ -16,6 +16,9 @@ enum CFAF128128B_0145T {
   CFAF_WIDTH = 127,
 };
 
+extern uint16_t bgColor;
+extern uint16_t textColor;
+
 /**
  * Initializes the LCD screen on the BOOSTXL-EDUMKII.
  */

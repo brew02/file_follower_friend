@@ -240,15 +240,18 @@ static void setLCDData() {
  */
 static void sendLCDCommand(uint8_t command) {
   setLCDCS();
-  // Wait for SPI1 to not be busy
-  while (BITCHECK(SPI1->SR, 7) == 1)
+  // Wait for SPI1 to not be busy and the transmit
+  // buffer to be empty
+  while (BITCHECK(SPI1->SR, 7) == 1 || BITCHECK(SPI1->SR, 1) == 0)
     ;
 
   setLCDCommand();
+
   writeSPI1(command);
 
-  // Wait for SPI1 to not be busy
-  while (BITCHECK(SPI1->SR, 7) == 1)
+  // Wait for SPI1 to not be busy and the transmit
+  // buffer to be empty
+  while (BITCHECK(SPI1->SR, 7) == 1 || BITCHECK(SPI1->SR, 1) == 0)
     ;
 
   setLCDData();
@@ -263,12 +266,19 @@ static void sendLCDCommand(uint8_t command) {
  */
 static void sendLCDData(uint8_t data) {
   setLCDCS();
-  // Wait for SPI1 transmission FIFO to not be full
-  while (((SPI1->SR >> 11) & 3) == 3)
+  // Wait for SPI1 to not be busy and the transmit
+  // buffer to be empty
+  while (BITCHECK(SPI1->SR, 7) == 1 || BITCHECK(SPI1->SR, 1) == 0)
     ;
 
   setLCDData();
+
   writeSPI1(data);
+
+  // Wait for SPI1 to not be busy and the transmit
+  // buffer to be empty
+  while (BITCHECK(SPI1->SR, 7) == 1 || BITCHECK(SPI1->SR, 1) == 0)
+    ;
   unsetLCDCS();
 }
 
@@ -395,8 +405,6 @@ void renderChar(uint8_t x, uint8_t y, char c, uint16_t charColor,
     sendLCDData((uint8_t)(bgColor));
     line <<= 1; // Move to the next line
   }
-
-  sendLCDCommand(ST7735_NOP);
 }
 
 unsigned long renderString(uint8_t x, uint8_t y, const char *text,
@@ -413,8 +421,6 @@ unsigned long renderString(uint8_t x, uint8_t y, const char *text,
     ++x;
     ++cnt;
   }
-
-  renderChar(CFAF_WIDTH - 5, CFAF_HEIGHT - 7, 'H', textColor, bgColor);
 
   return cnt;
 }
