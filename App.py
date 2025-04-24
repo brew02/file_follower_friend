@@ -12,7 +12,19 @@ def print_file_tree(path='.'):
 def get_file_tree_string(path):
     try:
         p = Path(path)
-        contents = [str(content) for content in p.iterdir()]
+        contents = []
+        for content in p.iterdir():
+            rel = str(content)
+            if content.is_dir():
+                rel = rel + '/'
+            content = str(content)
+            last = content.rfind('\\')
+            if last == -1:
+                contents.append(rel)
+            else:
+                contents.append(rel[(last + 1):])
+            
+            
     except FileNotFoundError:
         return f"Error: '{path}' is not a valid directory."
 
@@ -96,17 +108,18 @@ while True:
                 if parent.exists() and parent.is_dir():
                     current_path = parent
                     tree = get_file_tree_string(current_path)
-                    ser.write(tree.encode('utf-8') + b'\n')
+                    ser.write(tree.encode('utf-8') + b'\0')
                 else:
                     print(f"Error: Parent directory does not exist.\n")
 
             elif string_value:
                 directory_path = current_path / string_value
                 if directory_path.is_dir():
+                    current_path = directory_path
                     print(f"Sending file tree for {directory_path}...")
                     file_tree = get_file_tree_string(directory_path)
                     ser.write(file_tree.encode('utf-8'))
-                    ser.write(b'\n')
+                    ser.write(b'\0')
                 else:
                     ser.write(f"Error: '{directory_path}' is not a valid directory.\n".encode('utf-8'))
 

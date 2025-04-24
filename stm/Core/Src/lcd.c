@@ -368,20 +368,31 @@ void initLCD(uint16_t bgColor) {
   // Ensure normal display mode is on
   sendLCDCommand(ST7735_NORON);
 
-  setRenderFrame(0, 0, CFAF_WIDTH, CFAF_HEIGHT);
-
-  for (int i = 0; i <= CFAF_WIDTH; ++i) {
-    for (int j = 0; j <= CFAF_HEIGHT; ++j) {
-      // Send background color
-      sendLCDData((uint8_t)(bgColor >> 8));
-      sendLCDData((uint8_t)(bgColor));
-    }
-  }
+  renderFilledRectangle(0, 0, CFAF_WIDTH, CFAF_HEIGHT, bgColor);
 
   delayMS(10);
 
   // Turn the display on
   sendLCDCommand(ST7735_DISPON);
+}
+
+void renderFilledRectangle(int sX, int sY, int eX, int eY, uint16_t color) {
+  if ((sX < 0 || sX > CFAF_WIDTH) || (eX < 0 || eX > CFAF_WIDTH) ||
+      (sY < 0 || sY > CFAF_HEIGHT) || (eY < 0 || eY > CFAF_HEIGHT)) {
+    return;
+  }
+
+  setRenderFrame(sX, sY, eX, eY);
+
+  for (int i = 0; i < CFAF_WIDTH; ++i) {
+    for (int j = 0; j < CFAF_HEIGHT; ++j) {
+      // Send color
+      sendLCDData((uint8_t)(color >> 8));
+      sendLCDData((uint8_t)(color));
+    }
+  }
+
+  sendLCDCommand(ST7735_NOP);
 }
 
 void renderChar(int x, int y, char c, uint16_t charColor, uint16_t bgColor) {
@@ -396,8 +407,8 @@ void renderChar(int x, int y, char c, uint16_t charColor, uint16_t bgColor) {
   setRenderFrame(x, y, endX, endY);
 
   uint8_t line = 1; // Start with the first row
-  // Loop through each row (7 rows for each character)
-  for (int row = 0; row < 7; ++row) {
+  // Loop through each row (8 rows for each character)
+  for (int row = 0; row < 8; ++row) {
 
     // 5 columns for each character in the font
     for (int col = 0; col < 5; ++col) {
@@ -432,6 +443,36 @@ unsigned long renderString(int x, int y, const char *text, uint16_t textColor,
     renderChar(x * 6, y * 8, *text++, textColor, bgColor);
     ++x;
     ++cnt;
+  }
+
+  return cnt;
+}
+
+unsigned long renderDirectories(int current, const char *dirs,
+                                uint16_t textColor, uint16_t bgColor) {
+  unsigned long cnt = 0;
+  int x = 0;
+  int y = 0;
+
+  while (y < 16) {
+    if (y == current) {
+      renderChar(0 * 6, y * 8, '>', textColor, bgColor);
+      renderChar(1 * 6, y * 8, ' ', textColor, bgColor);
+      x += 2;
+      cnt += 2;
+    }
+
+    while (*dirs && *dirs != '\n' && x < 21) {
+      renderChar(x * 6, y * 8, *dirs++, textColor, bgColor);
+      ++x;
+      ++cnt;
+    }
+
+    if (*dirs == '\0')
+      break;
+    x = 0;
+    ++y;
+    ++dirs;
   }
 
   return cnt;

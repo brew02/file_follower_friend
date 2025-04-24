@@ -28,6 +28,17 @@ extern int brightness;
 void initLCD(uint16_t bgColor);
 
 /**
+ * Renders a filled rectangle to the LCD screen on the BOOSTXL-EDUMKII.
+ *
+ * @param sX The horizontal starting coordinate of the rectangle
+ * @param sY The vertical starting coordinate of the rectangle
+ * @param eX The horizontal ending coordinate of the rectangle
+ * @param eY The vertical ending coordinate of the rectangle
+ * @param color The color of the filled rectangle
+ */
+void renderFilledRectangle(int sX, int sY, int eX, int eY, uint16_t color);
+
+/**
  * Renders a character to the LCD screen on the BOOSTXL-EDUMKII.
  *
  * @param x The horizontal starting coordinate of the character
@@ -52,6 +63,20 @@ void renderChar(int x, int y, char c, uint16_t charColor, uint16_t bgColor);
  */
 unsigned long renderString(int x, int y, const char *text, uint16_t textColor,
                            uint16_t bgColor);
+
+/**
+ * Renders the directories to the LCD screen on the
+ * BOOSTXL-EDUMKII.
+ *
+ * @param current The current directory we are on
+ * @param dirs The directories as a null-terminated, newline separated string
+ * @param textColor The color for the text
+ * @param bgColor The color for the background
+ *
+ * @return The number of characters rendered
+ */
+unsigned long renderDirectories(int current, const char *dirs,
+                                uint16_t textColor, uint16_t bgColor);
 
 /**
  * Converts a 24-bit color to a 16-bit color.

@@ -194,6 +194,129 @@ void initADC1() {
 }
 
 /**
+ * Gets the directory from a string containing all
+ * content in the current directory.
+ *
+ * @param dir The directory to get
+ * @param dirs The content of the current directory
+ *
+ * @return NULL if the specified directory is not
+ * a directory, a string represnting the relative
+ * path of the directory otherwise.
+ */
+char *getDirectory(int dir, char *dirs) {
+  int count = 0;
+  if (count < 0 || count >= 15) {
+    return NULL;
+  }
+
+  while (*dirs) {
+    if (dir == count) {
+      char *tmp = dirs;
+      while (*dirs && *dirs != '\n') {
+        if (*dirs++ == '/' && (*dirs == '\0' || *dirs == '\n')) {
+          *(dirs) = '\0';
+          *(dirs - 1) = '\n';
+          return tmp;
+        }
+      }
+
+      return NULL;
+    }
+
+    if (*dirs++ == '\n') {
+      ++count;
+    }
+  }
+
+  return NULL;
+}
+
+typedef struct {
+  uint16_t vert;
+  uint16_t horz;
+} JOYSTICK;
+
+/**
+ * Handles the main functionality of File
+ * Follower Friend (FFF).
+ *
+ * @param joystick Contains the ADC converted
+ * vertical and horizontal values of the joystick
+ */
+void handleFriend(JOYSTICK *joystick) {
+  static char buffer[MAX_BUF_SIZE];
+  static size_t len = 0;
+  static int render = 0;
+  static int current = 0;
+
+  if (topButton) {
+    if (state == STATE_MENU) {
+      if (menu == MENU_ACCESS_DIRS) {
+        state = STATE_DIRS;
+        memset(buffer, 0, sizeof(buffer));
+        len = sendAndReceiveLPUART1("y", buffer, sizeof(buffer));
+        render = 1;
+      } else if (menu == MENU_UPD_BRIGHT && brightness <= 95) {
+        brightness += 5;
+        updateTIM3PWM(brightness);
+      }
+    } else if (state == STATE_DIRS) {
+      char *dir = getDirectory(current, buffer);
+      if (dir != NULL) {
+        len = sendAndReceiveLPUART1(dir, buffer, sizeof(buffer));
+        render = 1;
+      }
+    }
+  } else if (bottomButton) {
+    if (state == STATE_MENU) {
+      if (menu == MENU_UPD_BRIGHT && brightness >= 5) {
+        brightness -= 5;
+        updateTIM3PWM(brightness);
+      }
+    } else if (state == STATE_DIRS) {
+      memset(buffer, 0, sizeof(buffer));
+      len = sendAndReceiveLPUART1("g", buffer, sizeof(buffer));
+      render = 1;
+    }
+  }
+
+  topButton = 0;
+  bottomButton = 0;
+
+  if (state == STATE_DIRS) {
+    if (joystick->vert >= 2400 && joystick->vert <= 2700 && current != 0) {
+      // Up on joystick
+      --current;
+      render = 1;
+    } else if (joystick->vert < 2000 && current != 16) {
+      // Down on joystick
+      ++current;
+      render = 1;
+    }
+
+    if (render && len != 0) {
+      // Refresh the screen (can be made more efficient)
+      renderFilledRectangle(0, 0, CFAF_WIDTH, CFAF_HEIGHT, bgColor);
+      renderDirectories(current, buffer, textColor, bgColor);
+    }
+
+    render = 0;
+  } else if (state == STATE_MENU) {
+    if (joystick->vert >= 2400 && joystick->vert <= 2700 &&
+        menu != MENU_ACCESS_DIRS) {
+      // Up on joystick
+      --menu;
+    } else if (joystick->vert < 2000 && menu != MENU_UPD_BRIGHT) {
+      // Down on joystick
+      ++menu;
+    }
+
+    renderMenu();
+  }
+}
+
+/**
  * The main entry-point for the micro-controller.
  */
 int main() {
@@ -211,16 +334,6 @@ int main() {
   initButtons();
   initADC1();
 
-  typedef struct {
-    uint16_t vert;
-    uint16_t horz;
-  } JOYSTICK;
-
-  char buffer[MAX_BUF_SIZE];
-  memset(buffer, 0, sizeof(buffer));
-  sendLPUART1("y");
-  size_t chars = receiveLPUART1(buffer, sizeof(buffer));
-
   JOYSTICK joystick;
   while (1) {
     BITSET(ADC1->ISR, 6); // Clear the end of injected channel sequence flag
@@ -231,41 +344,7 @@ int main() {
     joystick.vert = ADC1->JDR1 & 0xFFF;
     joystick.horz = ADC1->JDR2 & 0xFFF;
 
-    if (state == STATE_MENU) {
-      if (topButton || bottomButton) {
-        switch (menu) {
-        case MENU_ACCESS_DIRS: {
-
-          break;
-        }
-        case MENU_UPD_BRIGHT: {
-          if (topButton && brightness <= 95)
-            brightness += 5;
-          if (bottomButton && brightness >= 5)
-            brightness -= 5;
-          updateTIM3PWM(brightness);
-          break;
-        }
-        }
-
-        topButton = 0;
-        bottomButton = 0;
-      }
-
-      if (joystick.vert >= 2400 && joystick.vert <= 2700) {
-        // This is considered "up" on the joystick
-        if (menu != MENU_ACCESS_DIRS) {
-          --menu;
-        }
-      } else if (joystick.vert < 2000) {
-        // This is considered "down" on the joystick
-        if (menu != MENU_UPD_BRIGHT) {
-          ++menu;
-        }
-      }
-
-      renderMenu();
-    }
+    handleFriend(&joystick);
 
     delayMS(100);
   }
