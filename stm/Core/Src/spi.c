@@ -1,3 +1,10 @@
+/**
+ * This file contains functions to initialize
+ * and write to SPI1.
+ *
+ * @author Brodie Abrew & Lucas Berry
+ */
+
 #include "spi.h"
 #include "bitmacro.h"
 #include "stm32l552xx.h"
@@ -23,6 +30,7 @@ void initSPI1() {
 }
 
 void writeSPI1(uint8_t val) {
-  // Write 8 bits
+  // Write 8 bits (must be marked "volatile"
+  // on the NUCLEO-L552ZE-Q board)
   *(volatile uint8_t *)(&SPI1->DR) = val;
 }

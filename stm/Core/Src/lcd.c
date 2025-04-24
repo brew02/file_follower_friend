@@ -1,5 +1,18 @@
-#include "lcd.h"
+/**
+ * This file contains functions to initialize
+ * and render different things to the LCD
+ * screen on the BOOSTXL-EDUMKII.
+ *
+ * @author Brodie Abrew & Lucas Berry
+ */
+
+#include <stdlib.h>
+#include <string.h>
+
 #include "bitmacro.h"
+#include "cmsis_gcc.h"
+#include "lcd.h"
+#include "main.h"
 #include "spi.h"
 #include "stm32l552xx.h"
 #include "timer.h"
@@ -11,6 +24,7 @@ enum ST7735_COMMANDS {
   ST7735_NORON = 0x13,
   ST7735_INVOFF = 0x20,
   ST7735_GAMSET = 0x26,
+  ST7735_DISPOFF = 0x28,
   ST7735_DISPON = 0x29,
   ST7735_CASET = 0x2A,
   ST7735_RASET = 0x2B,
@@ -30,6 +44,8 @@ enum ST7735_COMMANDS {
   ST7735_GMCTRP1 = 0xE0,
   ST7735_GMCTRN1 = 0xE1
 };
+
+int brightness = 20;
 
 static const uint8_t font[] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x3E, 0x5B, 0x4F, 0x5B, 0x3E, 0x3E, 0x6B,
@@ -176,36 +192,60 @@ static const uint8_t font[] = {
     0x17, 0x12, 0x00, 0x3C, 0x3C, 0x3C, 0x3C, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
 
+/**
+ * Sets the LCD reset.
+ */
 static void setLCDReset() {
   // Set LCD reset low (active low)
   BITCLEAR(GPIOE->ODR, 10);
 }
 
+/**
+ * Unsets the LCD reset.
+ */
 static void unsetLCDReset() {
   // Set LCD reset high
   BITSET(GPIOE->ODR, 10);
 }
 
+/**
+ * Sets the LCD chip select.
+ */
 static void setLCDCS() {
   // Set chip select low (active low)
   BITCLEAR(GPIOE->ODR, 12);
 }
 
+/**
+ * Unsets the LCD chip select.
+ */
 static void unsetLCDCS() {
   // Set chip select to high
   BITSET(GPIOE->ODR, 12);
 }
 
+/**
+ * Sets the LCD in command mode.
+ */
 static void setLCDCommand() {
   // Set LCD register select low (command)
   BITCLEAR(GPIOE->ODR, 11);
 }
 
+/**
+ * Sets the LCD in data mode.
+ */
 static void setLCDData() {
   // Set LCD register select high (data)
   BITSET(GPIOE->ODR, 11);
 }
 
+/**
+ * Sends a command to the ST7735 driver
+ * for the LCD screen on the BOOSTXL-EDUMKII.
+ *
+ * @param command The command to send
+ */
 static void sendLCDCommand(uint8_t command) {
   setLCDCS();
   // Wait for SPI1 to not be busy and the transmit
@@ -226,6 +266,12 @@ static void sendLCDCommand(uint8_t command) {
   unsetLCDCS();
 }
 
+/**
+ * Sends a piece of data to the ST7735 driver
+ * for the LCD screen on the BOOSTXL-EDUMKII.
+ *
+ * @param data The data to send
+ */
 static void sendLCDData(uint8_t data) {
   setLCDCS();
   // Wait for SPI1 to not be busy and the transmit
@@ -244,35 +290,61 @@ static void sendLCDData(uint8_t data) {
   unsetLCDCS();
 }
 
-static void setRenderFrame(uint8_t sX, uint8_t sY, uint8_t eX, uint8_t eY) {
+/**
+ * Sets the frame that we can render to.
+ *
+ * @param sX The starting horizontal coordinate
+ * that can be rendered to
+ * @param sY The starting vertical coordinate
+ * that can be rendered to
+ * @param eX The ending horizontal coordinate
+ * that can be rendered to
+ * @param eY The ending vertical coordinate
+ * that can be rendered to
+ */
+static void setRenderFrame(int sX, int sY, int eX, int eY) {
+  // The first two horizontal pixels
+  // are cut-off on the display
   sendLCDCommand(ST7735_CASET);
   sendLCDData(0x0);
-  sendLCDData(sX);
+  sendLCDData((uint8_t)sX + 2);
   sendLCDData(0x0);
-  sendLCDData(eX);
+  sendLCDData((uint8_t)eX + 2);
 
+  // The first three vertical pixels
+  // are cut-off on the display
   sendLCDCommand(ST7735_RASET);
   sendLCDData(0x0);
-  sendLCDData(sY);
+  sendLCDData((uint8_t)sY + 3);
   sendLCDData(0x0);
-  sendLCDData(eY);
+  sendLCDData((uint8_t)eY + 3);
+
+  sendLCDCommand(ST7735_RAMWR);
 }
 
-void initLCD() {
+void initLCD(uint16_t bgColor) {
+  setLCDCS();
   setLCDData();
 
   // Reset signal must be set for 10 μs minimum
   setLCDReset();
-  delayMS(50);
+  delayMS(1);
 
   // Reset lasts 120 ms max
   unsetLCDReset();
-  delayMS(150);
+  delayMS(120);
+  unsetLCDCS();
+
+  sendLCDCommand(ST7735_SWRESET);
+  delayMS(120);
 
   // Exit sleep mode
   // Must wait 120 ms minimum before sending the next command
   sendLCDCommand(ST7735_SLPOUT);
-  delayMS(200);
+  delayMS(120);
+
+  sendLCDCommand(ST7735_DISPOFF);
+  delayMS(120);
 
   // Set a gamma curve of 2.2
   sendLCDCommand(ST7735_GAMSET);
@@ -296,87 +368,79 @@ void initLCD() {
   // Ensure normal display mode is on
   sendLCDCommand(ST7735_NORON);
 
-  setRenderFrame(0, 0, CFAF_WIDTH, CFAF_HEIGHT);
-
-  // Fill the screen with red pixels
-  sendLCDCommand(ST7735_RAMWR);
-
-  for (int i = 0; i <= CFAF_WIDTH; ++i) {
-    for (int j = 0; j <= CFAF_HEIGHT; ++j) {
-      sendLCDData(0x0);
-      sendLCDData(0xF8);
-    }
-  }
+  renderFilledRectangle(0, 0, CFAF_WIDTH, CFAF_HEIGHT, bgColor);
 
   delayMS(10);
 
   // Turn the display on
   sendLCDCommand(ST7735_DISPON);
-
-  delayMS(10);
 }
 
-void renderChar(uint8_t x, uint8_t y, char c, uint16_t textColor,
-                uint16_t bgColor, uint8_t size) {
-  const uint8_t endX = x + 6 * size - 1;
-  const uint8_t endY = y + 8 * size - 1;
+void renderFilledRectangle(int sX, int sY, int eX, int eY, uint16_t color) {
+  if ((sX < 0 || sX > CFAF_WIDTH) || (eX < 0 || eX > CFAF_WIDTH) ||
+      (sY < 0 || sY > CFAF_HEIGHT) || (eY < 0 || eY > CFAF_HEIGHT)) {
+    return;
+  }
 
-  if (x > CFAF_WIDTH || endX > CFAF_WIDTH || y > CFAF_HEIGHT ||
-      endY > CFAF_HEIGHT) {
+  setRenderFrame(sX, sY, eX, eY);
+
+  for (int i = 0; i < CFAF_WIDTH; ++i) {
+    for (int j = 0; j < CFAF_HEIGHT; ++j) {
+      // Send color
+      sendLCDData((uint8_t)(color >> 8));
+      sendLCDData((uint8_t)(color));
+    }
+  }
+
+  sendLCDCommand(ST7735_NOP);
+}
+
+void renderChar(int x, int y, char c, uint16_t charColor, uint16_t bgColor) {
+  const int endX = x + 5;
+  const int endY = y + 7;
+
+  if ((x < 0 || x > CFAF_WIDTH) || (endX < 0 || endX > CFAF_WIDTH) ||
+      (y < 0 || y > CFAF_HEIGHT) || (endY < 0 || endY > CFAF_HEIGHT)) {
     return;
   }
 
   setRenderFrame(x, y, endX, endY);
-  sendLCDCommand(ST7735_RAMWR);
 
   uint8_t line = 1; // Start with the first row
   // Loop through each row (8 rows for each character)
   for (int row = 0; row < 8; ++row) {
 
-    // Repeat size times for each row to scale up
-    for (int i = 0; i < size; ++i) {
-
-      // 5 columns for each character in the font
-      for (int col = 0; col < 5; ++col) {
-        if (font[(c * 5) + col] & line) {
-          // Scale each pixel up
-          for (int j = 0; j < size; ++j) {
-            // Send the color for the pixel
-            sendLCDData((uint8_t)(textColor >> 8));
-            sendLCDData((uint8_t)(textColor));
-          }
-        } else {
-          for (int j = 0; j < size; ++j) {
-            // Send background color
-            sendLCDData((uint8_t)(bgColor >> 8));
-            sendLCDData((uint8_t)(bgColor));
-          }
-        }
-      }
-      // After finishing each row, add some space (background) for scaling
-      for (int j = 0; j < size; ++j) {
+    // 5 columns for each character in the font
+    for (int col = 0; col < 5; ++col) {
+      if (font[(c * 5) + col] & line) {
+        // Send the color for the pixel
+        sendLCDData((uint8_t)(charColor >> 8));
+        sendLCDData((uint8_t)(charColor));
+      } else {
         // Send background color
         sendLCDData((uint8_t)(bgColor >> 8));
         sendLCDData((uint8_t)(bgColor));
       }
     }
+
+    // Send background color
+    sendLCDData((uint8_t)(bgColor >> 8));
+    sendLCDData((uint8_t)(bgColor));
     line <<= 1; // Move to the next line
   }
 
   sendLCDCommand(ST7735_NOP);
 }
 
-unsigned long renderString(uint8_t x, uint8_t y, const char *text,
-                           uint16_t textColor, uint16_t bgColor) {
+unsigned long renderString(int x, int y, const char *text, uint16_t textColor,
+                           uint16_t bgColor) {
   unsigned long cnt = 0;
-  if (y > 10)
+  if (y >= 16)
     return 0;
 
   // loop to run through string
-  while (*text) {
-    if (x > 10)
-      return cnt;
-    renderChar(x * 6, y * 10, *text++, textColor, bgColor, 1);
+  while (*text && x < 21) {
+    renderChar(x * 6, y * 8, *text++, textColor, bgColor);
     ++x;
     ++cnt;
   }
@@ -384,7 +448,36 @@ unsigned long renderString(uint8_t x, uint8_t y, const char *text,
   return cnt;
 }
 
-// Convert a 24-bit color to 16-bit
+unsigned long renderDirectories(int current, const char *dirs,
+                                uint16_t textColor, uint16_t bgColor) {
+  unsigned long cnt = 0;
+  int x = 0;
+  int y = 0;
+
+  while (y < 16) {
+    if (y == current) {
+      renderChar(0 * 6, y * 8, '>', textColor, bgColor);
+      renderChar(1 * 6, y * 8, ' ', textColor, bgColor);
+      x += 2;
+      cnt += 2;
+    }
+
+    while (*dirs && *dirs != '\n' && x < 21) {
+      renderChar(x * 6, y * 8, *dirs++, textColor, bgColor);
+      ++x;
+      ++cnt;
+    }
+
+    if (*dirs == '\0')
+      break;
+    x = 0;
+    ++y;
+    ++dirs;
+  }
+
+  return cnt;
+}
+
 uint16_t color24to16(uint8_t r, uint8_t g, uint8_t b) {
   // Lose lower three bits of precision for red,
   // lower two bits for blue,
@@ -393,18 +486,17 @@ uint16_t color24to16(uint8_t r, uint8_t g, uint8_t b) {
           ((uint16_t)b >> 3));
 }
 
-void test() {
-  setRenderFrame(0, 0, CFAF_WIDTH, CFAF_HEIGHT);
+void renderMenu() {
+  char text[100] = {0};
+  if (state != STATE_MENU)
+    return;
 
-  // Fill the screen with black pixels
-  sendLCDCommand(ST7735_RAMWR);
+  memset(text, 0, sizeof(text));
+  sprintf(text, "%s Directories", (menu == MENU_ACCESS_DIRS ? ">" : " "));
+  renderString(0, 0, text, textColor, bgColor);
+  memset(text, 0, sizeof(text));
+  sprintf(text, "%s Brightness: %0*d", (menu == MENU_UPD_BRIGHT ? ">" : " "), 3,
+          brightness);
 
-  for (int i = 0; i <= CFAF_WIDTH; ++i) {
-    for (int j = 0; j <= CFAF_HEIGHT; ++j) {
-      sendLCDData(0);
-      sendLCDData(0);
-    }
-  }
-
-  delayMS(10);
+  renderString(0, 1, text, textColor, bgColor);
 }
