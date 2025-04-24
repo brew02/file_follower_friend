@@ -9,11 +9,14 @@ def print_file_tree(path='.'):
     for file in p.glob('*'):
         print(file)
 
-# Returns the file tree as a string
-def get_file_tree_string(path='.'):
-    p = Path(path)
-    folders = [str(folder) for folder in p.iterdir() if folder.is_dir()]
-    return '\n'.join(folders)
+def get_file_tree_string(path):
+    try:
+        p = Path(path)
+        contents = [str(content) for content in p.iterdir()]
+    except FileNotFoundError:
+        return f"Error: '{path}' is not a valid directory."
+
+    return '\n'.join(contents)
 
 def print_ports(ports):
     global port_num
@@ -68,21 +71,41 @@ time.sleep(2)
 ser.reset_input_buffer()
 
 print("Listening...")
+current_path = Path(".")
 
 while True:
     value = ser.readline()
     if value:
         try:
             string_value = value.decode('utf-8').strip()
+            if not string_value:
+                continue
+
             print(f"Received: {string_value}")
 
             if string_value == 'y':
-                print("Sending file tree...")
-                # Get the current directory
+                # Send current directory tree
                 file_tree = get_file_tree_string(r".")
                 ser.write(file_tree.encode('utf-8'))
                 ser.write(b'\n')
 
+            elif string_value == 'g':
+                print("Sending parent directory...")
+                # Send the parent directory's file tree
+                parent_path = current_path.parent
+                file_tree = get_file_tree_string(parent_path)
+                ser.write(file_tree.encode('utf-8'))
+                ser.write(b'\n')
+
+            elif string_value:
+                directory_path = current_path / string_value
+                if directory_path.is_dir():
+                    print(f"Sending file tree for {directory_path}...")
+                    file_tree = get_file_tree_string(directory_path)
+                    ser.write(file_tree.encode('utf-8'))
+                    ser.write(b'\n')
+                else:
+                    ser.write(f"Error: '{directory_path}' is not a valid directory.\n".encode('utf-8'))
 
         except UnicodeDecodeError:
             print("Received undecodable bytes.")
