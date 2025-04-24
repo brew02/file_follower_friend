@@ -1,3 +1,10 @@
+/**
+ * This file provides macros for common
+ * bit manipulation operations.
+ *
+ * @author Brodie Abrew & Lucas Berry
+ */
+
 #ifndef __BITS_H
 #define __BITS_H
 

@@ -1,3 +1,11 @@
+/**
+ * This file contains functions to initialize
+ * the timers, handle timer interrupts, update
+ * timers, and use timers to delay.
+ *
+ * @author Brodie Abrew & Lucas Berry
+ */
+
 #include "timer.h"
 #include "bitmacro.h"
 #include "stm32l552xx.h"
@@ -47,6 +55,11 @@ void initTimers() {
   BITSET(TIM3->CR1, 0);  // Enable TIM3
 }
 
+/**
+ * Handles the TIM1 interrupt
+ * (Note: It must have this
+ * exact name).
+ */
 void TIM1_UP_IRQHandler() {
 
   // TODO: Update LCD display

@@ -1,3 +1,12 @@
+/**
+ * This file contains the main entry-point for
+ * the program. It also includes function for
+ * initializing clocks, GPIOs, LPUART, and the
+ * user button on the NUCLEO-L552ZE-Q board.
+ *
+ * @author Brodie Abrew & Lucas Berry
+ */
+
 #include "bitmacro.h"
 #include "lcd.h"
 #include "spi.h"
@@ -9,6 +18,9 @@ int flag = 0;             // Flag for UART checking
 char buf[MAX_BUF_SIZE];   // Buffer to store received string
 int bufIndex = 0;         // Index to track the buffer position
 
+/**
+ * Enables peripheral clocks on the NUCLEO-L552ZE-Q board.
+ */
 void enableClocks() {
   BITSET(RCC->APB1ENR1, 28); // Power interface clock enable
   BITSET(RCC->APB1ENR1, 1);  // TIM3 clock enable
@@ -42,9 +54,17 @@ void enableClocks() {
   GPIOE 12              <-> J2.13 (LCD SPI CS)
   GPIOE 11              <-> J4.31 (LCD RS)
   GPIOE 10              <-> J2.17 (LCD RST)
+  GPIOE 9               <-> J1.2  (Joystick Hor(x))
+  GPIOE 8               <-> J3.26 (Joystick Ver(y))
+  GPIOE 7               <-> J1.5  (Joystick Select)
+  GPIOE 6               <-> J4.32 (Button 2)
+  GPIOE 5               <-> J4.33 (Button 1)
   GPIOE 3  (TIM3 PWM)   <-> J4.39 (LCD BACKLIGHT)
 */
 
+/**
+ * Initializes GPIOs G, E, and C on the NUCLEO-L552ZE-Q board.
+ */
 void initGPIOs() {
   BITSET(PWR->CR2, 9);      // Enable power to GPIOG
   BITSET(GPIOG->MODER, 17); // Set GPIOG 8 to AF
@@ -72,6 +92,16 @@ void initGPIOs() {
   BITSET(GPIOE->MODER, 22);
   BITCLEAR(GPIOE->MODER, 21); // Set GPIOE 10 to output
   BITSET(GPIOE->MODER, 20);
+  BITSET(GPIOE->MODER, 19); // Set GPIOE 9 to analog input
+  BITSET(GPIOE->MODER, 18);
+  BITSET(GPIOE->MODER, 17); // Set GPIOE 8 to analog input
+  BITSET(GPIOE->MODER, 16);
+  BITCLEAR(GPIOE->MODER, 15); // Set GPIOE 7 to input
+  BITCLEAR(GPIOE->MODER, 14);
+  BITCLEAR(GPIOE->MODER, 13); // Set GPIOE 6 to input
+  BITCLEAR(GPIOE->MODER, 12);
+  BITCLEAR(GPIOE->MODER, 11); // Set GPIOE 5 to input
+  BITCLEAR(GPIOE->MODER, 10);
   BITSET(GPIOE->MODER, 7); // Set GPIOE 3 to AF
   BITCLEAR(GPIOE->MODER, 6);
 
@@ -93,8 +123,15 @@ void initGPIOs() {
   BITCLEAR(GPIOE->AFR[0], 14);
   BITSET(GPIOE->AFR[0], 13);
   BITCLEAR(GPIOE->AFR[0], 12);
+
+  BITCLEAR(GPIOC->MODER, 27); // Set GPIOC 13 to input
+  BITCLEAR(GPIOC->MODER, 26);
 }
 
+/**
+ * Handles the LPUART1 interrupt (Note:
+ * It must have this exact name).
+ */
 void LPUART1_IRQHandler() {
   // RXNE (Receive not empty)
   if (LPUART1->ISR & (1 << 5)) {
@@ -119,12 +156,18 @@ void LPUART1_IRQHandler() {
   }
 }
 
-// Interrupt service routine for PC13
+/**
+ * Handles external interrupt 13 (Note:
+ * It must have this exact name).
+ */
 void EXTI13_IRQHandler() {
   EXTI->RPR1 = (1 << 13);   // Clear interrupt flag for PC13
   LPUART1->CR1 |= (1 << 7); // Enable TX interrupt
 }
 
+/**
+ * Initializes LPUART1 on the NUCLEO-L552ZE-Q board.
+ */
 void initLPUART1() {
   LPUART1->BRR = 35555;    // BAUD rate of 115200 (256 * 16Mhz / 115200)
   BITSET(LPUART1->CR1, 5); // Enable RXFIFO not empty interrupt
@@ -135,14 +178,10 @@ void initLPUART1() {
   NVIC_EnableIRQ(LPUART1_IRQn);      // Enable LPUART1 IRQ
 }
 
-// Initializes PC13
+/**
+ * Initializes the user button on the NUCLEO-L552ZE-Q board.
+ */
 void BTNinit() {
-  RCC->AHB2ENR |= (1 << 2); // Enable GPIOC
-
-  // Set up the mode for button at C13
-  BITCLEAR(GPIOC->MODER, 26); // Clear bit 26
-  BITCLEAR(GPIOC->MODER, 27); // Clear bit 27
-
   // Set up PC13
   RCC->APB2ENR |= 1;            // Enable Clock to SYSCFG & EXTI
   EXTI->EXTICR[3] = (0x2) << 8; // Select PC13
@@ -153,6 +192,9 @@ void BTNinit() {
   NVIC_EnableIRQ(EXTI13_IRQn);
 }
 
+/**
+ * The main entry-point for the microcontroller.
+ */
 int main() {
   enableClocks();
   initGPIOs();
