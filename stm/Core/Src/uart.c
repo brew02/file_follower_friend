@@ -9,6 +9,7 @@
 #include "bitmacro.h"
 #include "main.h"
 #include "stm32l552xx.h"
+#include "timer.h"
 
 void sendLPUART1(const char *chars) {
   int idx = 0;
@@ -31,8 +32,14 @@ size_t receiveLPUART1(char *buffer, size_t size) {
   size_t cnt = 0;
 
   while (cnt < (size - 1)) {
-    while (BITCHECK(LPUART1->ISR, 5) == 0)
-      ;
+    // Timeout if we haven't received a
+    // byte for 33ms.
+    setSysTickCountdown(33);
+    while (BITCHECK(LPUART1->ISR, 5) == 0) {
+      if (BITCHECK(SysTick->CTRL, 16) == 1)
+        return 0;
+    }
+
     char received = LPUART1->RDR;
 
     if (received == '\0') {
@@ -53,6 +60,8 @@ size_t sendAndReceiveLPUART1(const char *chars, char *buffer, size_t size) {
 }
 
 void initLPUART1() {
+  LPUART1->TDR = 0;        // Clear transmit data register
+  LPUART1->RDR = 0;        // Clear receive data register
   LPUART1->BRR = 35555;    // BAUD rate of 115200 (256 * 16Mhz / 115200)
   BITSET(LPUART1->CR1, 3); // Enable transmitter
   BITSET(LPUART1->CR1, 2); // Enable receiver

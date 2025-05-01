@@ -124,6 +124,8 @@ while True:
     # checks if value is null
     if value:
         try:
+            # removes any invalid bytes
+            value.replace(b'\xFF', b'')
             string_value = value.decode('utf-8').strip() # gets received string
 
             # ensures empty strings are ignored

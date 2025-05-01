@@ -21,6 +21,7 @@
 
 uint16_t bgColor = 0;
 uint16_t textColor = 0;
+uint16_t dirColor = 0;
 FFFState state = STATE_MENU;
 FFFMenu menu = MENU_ACCESS_DIRS;
 
@@ -253,9 +254,11 @@ void handleFriend(JOYSTICK *joystick) {
   if (topButton) {
     if (state == STATE_MENU) {
       if (menu == MENU_ACCESS_DIRS) {
-        state = STATE_DIRS;
-        memset(buffer, 0, sizeof(buffer));
         len = sendAndReceiveLPUART1("y\n", buffer, sizeof(buffer));
+        if (len == 0)
+          return;
+
+        state = STATE_DIRS;
         render = 1;
       } else if (menu == MENU_UPD_BRIGHT && brightness <= 95) {
         brightness += 5;
@@ -265,6 +268,10 @@ void handleFriend(JOYSTICK *joystick) {
       char *dir = getDirectory(current, buffer);
       if (dir != NULL) {
         len = sendAndReceiveLPUART1(dir, buffer, sizeof(buffer));
+        if (len == 0)
+          return;
+
+        current = 0;
         render = 1;
       }
     }
@@ -275,8 +282,11 @@ void handleFriend(JOYSTICK *joystick) {
         updateTIM3PWM(brightness);
       }
     } else if (state == STATE_DIRS) {
-      memset(buffer, 0, sizeof(buffer));
       len = sendAndReceiveLPUART1("g\n", buffer, sizeof(buffer));
+      if (len == 0)
+        return;
+
+      current = 0;
       render = 1;
     }
   }
@@ -298,7 +308,7 @@ void handleFriend(JOYSTICK *joystick) {
     if (render && len != 0) {
       // Refresh the screen (can be made more efficient)
       renderFilledRectangle(0, 0, CFAF_WIDTH, CFAF_HEIGHT, bgColor);
-      renderDirectories(current, buffer, textColor, bgColor);
+      renderDirectories(current, buffer, dirColor, textColor, bgColor);
     }
 
     render = 0;
@@ -324,6 +334,9 @@ int main() {
   bgColor = color24to16(0x0, 0x0, 0x0);
   // White
   textColor = color24to16(0xFF, 0xFF, 0xFF);
+
+  // Blue
+  dirColor = color24to16(0x7B, 0x74, 0xFF);
 
   enableClocks();
   initGPIOs();

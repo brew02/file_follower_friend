@@ -18,6 +18,7 @@ enum CFAF128128B_0145T {
 
 extern uint16_t bgColor;
 extern uint16_t textColor;
+extern uint16_t dirColor;
 extern int brightness;
 
 /**
@@ -51,6 +52,22 @@ void renderChar(int x, int y, char c, uint16_t charColor, uint16_t bgColor);
 
 /**
  * Renders a string of characters to the LCD screen on the
+ * BOOSTXL-EDUMKII safely.
+ *
+ * @param x The horizontal starting coordinate of the character
+ * @param y The vertical starting coordinate of the character
+ * @param size The maximum number of characters to print
+ * @param text The string of characters to render
+ * @param textColor The color for the text
+ * @param bgColor The color for the background
+ *
+ * @return The number of characters rendered
+ */
+unsigned long renderStringSafe(int x, int y, int size, const char *text,
+                               uint16_t textColor, uint16_t bgColor);
+
+/**
+ * Renders a string of characters to the LCD screen on the
  * BOOSTXL-EDUMKII.
  *
  * @param x The horizontal starting coordinate of the character
@@ -70,13 +87,15 @@ unsigned long renderString(int x, int y, const char *text, uint16_t textColor,
  *
  * @param current The current directory we are on
  * @param dirs The directories as a null-terminated, newline separated string
+ * @param dirColor The color for printing directories
  * @param textColor The color for the text
  * @param bgColor The color for the background
  *
  * @return The number of characters rendered
  */
 unsigned long renderDirectories(int current, const char *dirs,
-                                uint16_t textColor, uint16_t bgColor);
+                                uint16_t dirColor, uint16_t textColor,
+                                uint16_t bgColor);
 
 /**
  * Converts a 24-bit color to a 16-bit color.

@@ -362,8 +362,9 @@ void initLCD(uint16_t bgColor) {
   delayMS(10);
 
   // Use inverted row and column address order
+  // Use BGR color order
   sendLCDCommand(ST7735_MADCTL);
-  sendLCDData(0xC0);
+  sendLCDData(0xC8);
 
   // Ensure normal display mode is on
   sendLCDCommand(ST7735_NORON);
@@ -432,14 +433,14 @@ void renderChar(int x, int y, char c, uint16_t charColor, uint16_t bgColor) {
   sendLCDCommand(ST7735_NOP);
 }
 
-unsigned long renderString(int x, int y, const char *text, uint16_t textColor,
-                           uint16_t bgColor) {
+unsigned long renderStringSafe(int x, int y, int size, const char *text,
+                               uint16_t textColor, uint16_t bgColor) {
   unsigned long cnt = 0;
   if (y >= 16)
     return 0;
 
   // loop to run through string
-  while (*text && x < 21) {
+  while (cnt < size && *text && x < 21) {
     renderChar(x * 6, y * 8, *text++, textColor, bgColor);
     ++x;
     ++cnt;
@@ -448,13 +449,23 @@ unsigned long renderString(int x, int y, const char *text, uint16_t textColor,
   return cnt;
 }
 
+unsigned long renderString(int x, int y, const char *text, uint16_t textColor,
+                           uint16_t bgColor) {
+  return renderStringSafe(x, y, 21, text, textColor, bgColor);
+}
+
 unsigned long renderDirectories(int current, const char *dirs,
-                                uint16_t textColor, uint16_t bgColor) {
+                                uint16_t dirColor, uint16_t textColor,
+                                uint16_t bgColor) {
   unsigned long cnt = 0;
-  int x = 0;
-  int y = 0;
+  int x, y = 0;
+  int start, end = 0;
+  int isDir = 0;
 
   while (y < 16) {
+    x = 0;
+    isDir = 0;
+
     if (y == current) {
       renderChar(0 * 6, y * 8, '>', textColor, bgColor);
       renderChar(1 * 6, y * 8, ' ', textColor, bgColor);
@@ -462,17 +473,20 @@ unsigned long renderDirectories(int current, const char *dirs,
       cnt += 2;
     }
 
-    while (*dirs && *dirs != '\n' && x < 21) {
-      renderChar(x * 6, y * 8, *dirs++, textColor, bgColor);
-      ++x;
+    while (*(dirs + end) && *(dirs + end) != '\n') {
+      if (*(dirs + end) == '/')
+        isDir = 1;
       ++cnt;
+      ++end;
     }
 
-    if (*dirs == '\0')
+    renderStringSafe(x, y, end - start, dirs + start,
+                     isDir == 1 ? dirColor : textColor, bgColor);
+    if (*(dirs + end) == '\0')
       break;
-    x = 0;
+
     ++y;
-    ++dirs;
+    start = ++end;
   }
 
   return cnt;
