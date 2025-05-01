@@ -110,7 +110,7 @@ while True:
 
 # sets up serial object for data transfer
 ser = serial.Serial(port=com.device, baudrate=baudrate, timeout=None, write_timeout=None)
-time.sleep(2) # brief delay
+time.sleep(1) # brief delay
 ser.reset_input_buffer() # resets input buffer
 
 # program begins
@@ -162,7 +162,7 @@ while True:
                     file_tree = get_file_tree_string(directory_path) # gets the contents of the directory
                     ser.write(file_tree.encode('utf-8') + b'\0') # sends contents over UART
                 else:
-                    ser.write(f"Error: '{directory_path}' is not a valid directory.\n".encode('utf-8')) # error checking
+                    ser.write(f"Error: '{directory_path}' is not a valid directory.\n".encode('utf-8') + b'\0') # error checking
 
         # exception checking
         except UnicodeDecodeError:
