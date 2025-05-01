@@ -33,8 +33,8 @@ size_t receiveLPUART1(char *buffer, size_t size) {
 
   while (cnt < (size - 1)) {
     // Timeout if we haven't received a
-    // byte for 33ms.
-    setSysTickCountdown(33);
+    // byte for 50ms.
+    setSysTickCountdown(50);
     while (BITCHECK(LPUART1->ISR, 5) == 0) {
       if (BITCHECK(SysTick->CTRL, 16) == 1)
         return 0;

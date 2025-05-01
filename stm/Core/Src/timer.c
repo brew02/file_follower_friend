@@ -11,12 +11,13 @@
 #include "stm32l552xx.h"
 
 void delayMS(unsigned long val) {
-  BITCHECK(SysTick->CTRL, 16); // Clears COUNTFLAG
-  BITCLEAR(SysTick->CTRL, 0);  // Disable SysTick
-  SysTick->LOAD = 16000 - 1;   // Period of 1 MS (16MHz / 16000)
-  SysTick->VAL = 0;            // Reset counter
-  BITSET(SysTick->CTRL, 2);    // Use processor clock
-  BITSET(SysTick->CTRL, 0);    // Enable SysTick
+  (void)BITCHECK((*(volatile unsigned long *)&SysTick->CTRL),
+                 16);         // Clears COUNTFLAG
+  BITCLEAR(SysTick->CTRL, 0); // Disable SysTick
+  SysTick->LOAD = 16000 - 1;  // Period of 1 MS (16MHz / 16000)
+  SysTick->VAL = 0;           // Reset counter
+  BITSET(SysTick->CTRL, 2);   // Use processor clock
+  BITSET(SysTick->CTRL, 0);   // Enable SysTick
 
   for (unsigned int i = 0; i < val; ++i) {
     // Wait until COUNTFLAG is 1 (automatically reset to 0 on reads)
@@ -26,8 +27,9 @@ void delayMS(unsigned long val) {
 }
 
 void setSysTickCountdown(unsigned long val) {
-  BITCHECK(SysTick->CTRL, 16); // Clears COUNTFLAG
-  BITCLEAR(SysTick->CTRL, 0);  // Disable SysTick
+  (void)BITCHECK((*(volatile unsigned long *)&SysTick->CTRL),
+                 16);         // Clears COUNTFLAG
+  BITCLEAR(SysTick->CTRL, 0); // Disable SysTick
   SysTick->LOAD =
       (16000 * val) - 1;    // Period of 1 MS * val (16MHz / (16000 * val))
   SysTick->VAL = 0;         // Reset counter

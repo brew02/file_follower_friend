@@ -454,23 +454,32 @@ unsigned long renderString(int x, int y, const char *text, uint16_t textColor,
   return renderStringSafe(x, y, LIMITX, text, textColor, bgColor);
 }
 
-unsigned long renderDirectories(int current, const char *dirs,
-                                uint16_t dirColor, uint16_t textColor,
-                                uint16_t bgColor) {
+unsigned long renderDirectories(int current, int startChar, const char *dirs,
+                                uint16_t cursorColor, uint16_t dirColor,
+                                uint16_t textColor, uint16_t bgColor) {
   unsigned long cnt = 0;
-  int x, y = 0;
-  int start, end = 0;
+  int x = 0;
+  int y = 0;
+  int start = 0;
+  int end = 0;
   int isDir = 0;
 
   while (y < LIMITY) {
+    start += startChar;
+    end = start;
     x = 0;
     isDir = 0;
 
     if (y == current) {
-      renderChar(0 * PIXEL_SPACEX, y * PIXEL_SPACEY, '>', textColor, bgColor);
-      renderChar(1 * PIXEL_SPACEX, y * PIXEL_SPACEY, ' ', textColor, bgColor);
+      renderStringSafe(x, y, 2, "> ", cursorColor, bgColor);
       x += 2;
       cnt += 2;
+    }
+
+    if (startChar > 0) {
+      renderStringSafe(x, y, 3, "...", textColor, bgColor);
+      x += 3;
+      cnt += 3;
     }
 
     while (*(dirs + end) && *(dirs + end) != '\n') {
@@ -480,8 +489,15 @@ unsigned long renderDirectories(int current, const char *dirs,
       ++end;
     }
 
+    // We are doing a little bit of extra
+    // rendering if we are past the x limit
     renderStringSafe(x, y, end - start, dirs + start,
                      isDir == 1 ? dirColor : textColor, bgColor);
+
+    if ((end - start + x) > LIMITX) {
+      renderStringSafe(LIMITX - 3, y, 3, "...", textColor, bgColor);
+    }
+
     if (*(dirs + end) == '\0')
       break;
 
@@ -506,11 +522,7 @@ void renderMenu() {
     return;
 
   memset(text, 0, sizeof(text));
-  sprintf(text, "%s Directories", (menu == MENU_ACCESS_DIRS ? ">" : " "));
-  renderString(0, 0, text, textColor, bgColor);
-  memset(text, 0, sizeof(text));
-  sprintf(text, "%s Brightness: %0*d", (menu == MENU_UPD_BRIGHT ? ">" : " "), 3,
-          brightness);
+  sprintf(text, "Directories\nBrightness: %0*d", 3, brightness);
 
-  renderString(0, 1, text, textColor, bgColor);
+  renderDirectories(menu, 0, text, cursorColor, dirColor, textColor, bgColor);
 }

@@ -22,6 +22,7 @@
 uint16_t bgColor = 0;
 uint16_t textColor = 0;
 uint16_t dirColor = 0;
+uint16_t cursorColor = 0;
 FFFState state = STATE_MENU;
 FFFMenu menu = MENU_ACCESS_DIRS;
 
@@ -249,7 +250,8 @@ void handleFriend(JOYSTICK *joystick) {
   static char buffer[MAX_BUF_SIZE];
   static size_t len = 0;
   static int render = 0;
-  static int current = 0;
+  static int currentY = 0;
+  static int currentX = 0;
 
   if (topButton) {
     if (state == STATE_MENU) {
@@ -265,13 +267,14 @@ void handleFriend(JOYSTICK *joystick) {
         updateTIM3PWM(brightness);
       }
     } else if (state == STATE_DIRS) {
-      char *dir = getDirectory(current, buffer);
+      char *dir = getDirectory(currentY, buffer);
       if (dir != NULL) {
         len = sendAndReceiveLPUART1(dir, buffer, sizeof(buffer));
         if (len == 0)
           return;
 
-        current = 0;
+        currentY = 0;
+        currentX = 0;
         render = 1;
       }
     }
@@ -286,7 +289,8 @@ void handleFriend(JOYSTICK *joystick) {
       if (len == 0)
         return;
 
-      current = 0;
+      currentY = 0;
+      currentX = 0;
       render = 1;
     }
   }
@@ -295,20 +299,25 @@ void handleFriend(JOYSTICK *joystick) {
   bottomButton = 0;
 
   if (state == STATE_DIRS) {
-    if (joystick->vert >= 2400 && joystick->vert <= 2700 && current != 0) {
+    if (joystick->vert >= 2400 && joystick->vert <= 2700 && currentY != 0) {
       // Up on joystick
-      --current;
+      --currentY;
       render = 1;
-    } else if (joystick->vert < 2000 && current != LIMITY) {
+    } else if (joystick->vert < 2000 && currentY != LIMITY) {
       // Down on joystick
-      ++current;
+      ++currentY;
       render = 1;
+    }
+
+    if (joystick->horz > 0) {
+      currentX = 0;
     }
 
     if (render && len != 0) {
       // Refresh the screen (can be made more efficient)
       renderFilledRectangle(0, 0, CFAF_WIDTH, CFAF_HEIGHT, bgColor);
-      renderDirectories(current, buffer, dirColor, textColor, bgColor);
+      renderDirectories(currentY, currentX, buffer, cursorColor, dirColor,
+                        textColor, bgColor);
     }
 
     render = 0;
@@ -334,9 +343,10 @@ int main() {
   bgColor = color24to16(0x0, 0x0, 0x0);
   // White
   textColor = color24to16(0xFF, 0xFF, 0xFF);
-
   // Blue
   dirColor = color24to16(0x7B, 0x74, 0xFF);
+  // Green
+  cursorColor = color24to16(0x83, 0xFA, 0x89);
 
   enableClocks();
   initGPIOs();

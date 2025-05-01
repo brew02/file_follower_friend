@@ -25,13 +25,14 @@ enum LCD_CHARS {
   PIXEL_SPACEX = PIXELX + 1,
   PIXEL_SPACEY = PIXELY + 1,
   // Maximum character limits
-  LIMITX = (CFAF_WIDTH + 1) / PIXEL_SPACEX,
-  LIMITY = (CFAF_HEIGHT + 1) / PIXEL_SPACEY
+  LIMITX = ((CFAF_WIDTH + 1) / PIXEL_SPACEX) - 1,
+  LIMITY = ((CFAF_HEIGHT + 1) / PIXEL_SPACEY) - 1
 };
 
 extern uint16_t bgColor;
 extern uint16_t textColor;
 extern uint16_t dirColor;
+extern uint16_t cursorColor;
 extern int brightness;
 
 /**
@@ -99,16 +100,18 @@ unsigned long renderString(int x, int y, const char *text, uint16_t textColor,
  * BOOSTXL-EDUMKII.
  *
  * @param current The current directory we are on
+ * @param startChar The character for each directory to start rendering at
  * @param dirs The directories as a null-terminated, newline separated string
+ * @param cursorColor The color for the cursor
  * @param dirColor The color for printing directories
  * @param textColor The color for the text
  * @param bgColor The color for the background
  *
  * @return The number of characters rendered
  */
-unsigned long renderDirectories(int current, const char *dirs,
-                                uint16_t dirColor, uint16_t textColor,
-                                uint16_t bgColor);
+unsigned long renderDirectories(int current, int startChar, const char *dirs,
+                                uint16_t cursorColor, uint16_t dirColor,
+                                uint16_t textColor, uint16_t bgColor);
 
 /**
  * Converts a 24-bit color to a 16-bit color.
