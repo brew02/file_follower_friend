@@ -454,7 +454,7 @@ unsigned long renderString(int x, int y, const char *text, uint16_t textColor,
   return renderStringSafe(x, y, LIMITX, text, textColor, bgColor);
 }
 
-unsigned long renderDirectories(int current, int startChar, const char *dirs,
+unsigned long renderDirectories(int current, const char *dirs,
                                 uint16_t cursorColor, uint16_t dirColor,
                                 uint16_t textColor, uint16_t bgColor) {
   unsigned long cnt = 0;
@@ -465,8 +465,6 @@ unsigned long renderDirectories(int current, int startChar, const char *dirs,
   int isDir = 0;
 
   while (y < LIMITY) {
-    start += startChar;
-    end = start;
     x = 0;
     isDir = 0;
 
@@ -474,12 +472,6 @@ unsigned long renderDirectories(int current, int startChar, const char *dirs,
       renderStringSafe(x, y, 2, "> ", cursorColor, bgColor);
       x += 2;
       cnt += 2;
-    }
-
-    if (startChar > 0) {
-      renderStringSafe(x, y, 3, "...", textColor, bgColor);
-      x += 3;
-      cnt += 3;
     }
 
     while (*(dirs + end) && *(dirs + end) != '\n') {
@@ -524,5 +516,5 @@ void renderMenu() {
   memset(text, 0, sizeof(text));
   sprintf(text, "Directories\nBrightness: %0*d", 3, brightness);
 
-  renderDirectories(menu, 0, text, cursorColor, dirColor, textColor, bgColor);
+  renderDirectories(menu, text, cursorColor, dirColor, textColor, bgColor);
 }

@@ -251,7 +251,6 @@ void handleFriend(JOYSTICK *joystick) {
   static size_t len = 0;
   static int render = 0;
   static int currentY = 0;
-  static int currentX = 0;
 
   if (topButton) {
     if (state == STATE_MENU) {
@@ -265,6 +264,7 @@ void handleFriend(JOYSTICK *joystick) {
       } else if (menu == MENU_UPD_BRIGHT && brightness <= 95) {
         brightness += 5;
         updateTIM3PWM(brightness);
+        render = 1;
       }
     } else if (state == STATE_DIRS) {
       char *dir = getDirectory(currentY, buffer);
@@ -274,7 +274,6 @@ void handleFriend(JOYSTICK *joystick) {
           return;
 
         currentY = 0;
-        currentX = 0;
         render = 1;
       }
     }
@@ -283,6 +282,7 @@ void handleFriend(JOYSTICK *joystick) {
       if (menu == MENU_UPD_BRIGHT && brightness >= 5) {
         brightness -= 5;
         updateTIM3PWM(brightness);
+        render = 1;
       }
     } else if (state == STATE_DIRS) {
       len = sendAndReceiveLPUART1("g\n", buffer, sizeof(buffer));
@@ -290,7 +290,6 @@ void handleFriend(JOYSTICK *joystick) {
         return;
 
       currentY = 0;
-      currentX = 0;
       render = 1;
     }
   }
@@ -309,15 +308,11 @@ void handleFriend(JOYSTICK *joystick) {
       render = 1;
     }
 
-    if (joystick->horz > 0) {
-      currentX = 0;
-    }
-
     if (render && len != 0) {
       // Refresh the screen (can be made more efficient)
       renderFilledRectangle(0, 0, CFAF_WIDTH, CFAF_HEIGHT, bgColor);
-      renderDirectories(currentY, currentX, buffer, cursorColor, dirColor,
-                        textColor, bgColor);
+      renderDirectories(currentY, buffer, cursorColor, dirColor, textColor,
+                        bgColor);
     }
 
     render = 0;
@@ -326,12 +321,20 @@ void handleFriend(JOYSTICK *joystick) {
         menu != MENU_ACCESS_DIRS) {
       // Up on joystick
       --menu;
+      render = 1;
     } else if (joystick->vert < 2000 && menu != MENU_UPD_BRIGHT) {
       // Down on joystick
       ++menu;
+      render = 1;
     }
 
-    renderMenu();
+    if (render) {
+      // Refresh the screen (can be made more efficient)
+      renderFilledRectangle(0, 0, CFAF_WIDTH, CFAF_HEIGHT, bgColor);
+      renderMenu();
+    }
+
+    render = 0;
   }
 }
 
@@ -356,6 +359,8 @@ int main() {
   initLCD(bgColor);
   initButtons();
   initADC1();
+
+  renderMenu();
 
   JOYSTICK joystick;
   while (1) {
