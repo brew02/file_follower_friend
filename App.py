@@ -141,10 +141,10 @@ while True:
             # checks if 'g' character received
             elif string_value == 'g':
                 parent = current_path.parent # gets contents of the parent directory
-                print(f"Moving to parent directory: {parent}")
-
+                
                 # checks if the parent directory exists and ensures it is a directory
                 if parent.exists() and parent.is_dir():
+                    print(f"Moving to parent directory: {parent}")
                     current_path = parent # gets the parent path
                     tree = get_file_tree_string(current_path) # gets contents of parent
                     ser.write(tree.encode('utf-8') + b'\0') # sends parent contents over UART
@@ -162,7 +162,7 @@ while True:
                     file_tree = get_file_tree_string(directory_path) # gets the contents of the directory
                     ser.write(file_tree.encode('utf-8') + b'\0') # sends contents over UART
                 else:
-                    ser.write(f"Error: '{directory_path}' is not a valid directory.\n".encode('utf-8') + b'\0') # error checking
+                    print(f"Error: '{directory_path}' is not a valid directory.") # error checking
 
         # exception checking
         except UnicodeDecodeError:
