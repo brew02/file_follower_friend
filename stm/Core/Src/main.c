@@ -299,7 +299,7 @@ void handleFriend(JOYSTICK *joystick) {
       // Up on joystick
       --current;
       render = 1;
-    } else if (joystick->vert < 2000 && current != 16) {
+    } else if (joystick->vert < 2000 && current != LIMITY) {
       // Down on joystick
       ++current;
       render = 1;
@@ -359,7 +359,7 @@ int main() {
 
     handleFriend(&joystick);
 
-    delayMS(100);
+    delayMS(50);
   }
 
   return 0;

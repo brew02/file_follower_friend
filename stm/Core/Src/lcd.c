@@ -397,8 +397,8 @@ void renderFilledRectangle(int sX, int sY, int eX, int eY, uint16_t color) {
 }
 
 void renderChar(int x, int y, char c, uint16_t charColor, uint16_t bgColor) {
-  const int endX = x + 5;
-  const int endY = y + 7;
+  const int endX = x + PIXELX;
+  const int endY = y + PIXELY;
 
   if ((x < 0 || x > CFAF_WIDTH) || (endX < 0 || endX > CFAF_WIDTH) ||
       (y < 0 || y > CFAF_HEIGHT) || (endY < 0 || endY > CFAF_HEIGHT)) {
@@ -408,11 +408,11 @@ void renderChar(int x, int y, char c, uint16_t charColor, uint16_t bgColor) {
   setRenderFrame(x, y, endX, endY);
 
   uint8_t line = 1; // Start with the first row
-  // Loop through each row (8 rows for each character)
-  for (int row = 0; row < 8; ++row) {
+  // Loop through each row
+  for (int row = 0; row < PIXELY; ++row) {
 
-    // 5 columns for each character in the font
-    for (int col = 0; col < 5; ++col) {
+    // Loop through each column
+    for (int col = 0; col < PIXELX; ++col) {
       if (font[(c * 5) + col] & line) {
         // Send the color for the pixel
         sendLCDData((uint8_t)(charColor >> 8));
@@ -436,12 +436,12 @@ void renderChar(int x, int y, char c, uint16_t charColor, uint16_t bgColor) {
 unsigned long renderStringSafe(int x, int y, int size, const char *text,
                                uint16_t textColor, uint16_t bgColor) {
   unsigned long cnt = 0;
-  if (y >= 16)
+  if (y >= LIMITY)
     return 0;
 
   // loop to run through string
-  while (cnt < size && *text && x < 21) {
-    renderChar(x * 6, y * 8, *text++, textColor, bgColor);
+  while (cnt < size && *text && x < LIMITX) {
+    renderChar(x * PIXEL_SPACEX, y * PIXEL_SPACEY, *text++, textColor, bgColor);
     ++x;
     ++cnt;
   }
@@ -451,7 +451,7 @@ unsigned long renderStringSafe(int x, int y, int size, const char *text,
 
 unsigned long renderString(int x, int y, const char *text, uint16_t textColor,
                            uint16_t bgColor) {
-  return renderStringSafe(x, y, 21, text, textColor, bgColor);
+  return renderStringSafe(x, y, LIMITX, text, textColor, bgColor);
 }
 
 unsigned long renderDirectories(int current, const char *dirs,
@@ -462,13 +462,13 @@ unsigned long renderDirectories(int current, const char *dirs,
   int start, end = 0;
   int isDir = 0;
 
-  while (y < 16) {
+  while (y < LIMITY) {
     x = 0;
     isDir = 0;
 
     if (y == current) {
-      renderChar(0 * 6, y * 8, '>', textColor, bgColor);
-      renderChar(1 * 6, y * 8, ' ', textColor, bgColor);
+      renderChar(0 * PIXEL_SPACEX, y * PIXEL_SPACEY, '>', textColor, bgColor);
+      renderChar(1 * PIXEL_SPACEX, y * PIXEL_SPACEY, ' ', textColor, bgColor);
       x += 2;
       cnt += 2;
     }

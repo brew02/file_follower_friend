@@ -16,6 +16,19 @@ enum CFAF128128B_0145T {
   CFAF_WIDTH = 127,
 };
 
+enum LCD_CHARS {
+  // Five horizontal pixels per character
+  PIXELX = 5,
+  // Eight vertical pixels per character
+  PIXELY = 8,
+  // One extra space so characters don't collide
+  PIXEL_SPACEX = PIXELX + 1,
+  PIXEL_SPACEY = PIXELY + 1,
+  // Maximum character limits
+  LIMITX = (CFAF_WIDTH + 1) / PIXEL_SPACEX,
+  LIMITY = (CFAF_HEIGHT + 1) / PIXEL_SPACEY
+};
+
 extern uint16_t bgColor;
 extern uint16_t textColor;
 extern uint16_t dirColor;
