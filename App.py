@@ -109,7 +109,7 @@ while True:
         print("Invalid baudrate selected. Please choose a valid option.")
 
 # sets up serial object for data transfer
-ser = serial.Serial(port=com.device, baudrate=baudrate, timeout=0)
+ser = serial.Serial(port=com.device, baudrate=baudrate, timeout=None, write_timeout=None)
 time.sleep(2) # brief delay
 ser.reset_input_buffer() # resets input buffer
 
@@ -136,8 +136,7 @@ while True:
             if string_value == 'y':
                 print(f"Sending current directory")
                 file_tree = get_file_tree_string(r".") # gets contents of the current directory
-                ser.write(file_tree.encode('utf-8')) # writes string over UART
-                ser.write(b'\0') # adds null terminating character
+                ser.write(file_tree.encode('utf-8') + b'\0') # writes string over UART
 
             # checks if 'g' character received
             elif string_value == 'g':
@@ -161,8 +160,7 @@ while True:
                     current_path = directory_path # gets the path
                     print(f"Sending file tree for {directory_path}...")
                     file_tree = get_file_tree_string(directory_path) # gets the contents of the directory
-                    ser.write(file_tree.encode('utf-8')) # sends contents over UART
-                    ser.write(b'\0') # adds null character
+                    ser.write(file_tree.encode('utf-8') + b'\0') # sends contents over UART
                 else:
                     ser.write(f"Error: '{directory_path}' is not a valid directory.\n".encode('utf-8')) # error checking
 

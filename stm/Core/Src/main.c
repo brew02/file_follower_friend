@@ -201,7 +201,7 @@ void initADC1() {
  * @param dirs The content of the current directory
  *
  * @return NULL if the specified directory is not
- * a directory, a string represnting the relative
+ * a directory, a string representing the relative
  * path of the directory otherwise.
  */
 char *getDirectory(int dir, char *dirs) {
@@ -255,7 +255,7 @@ void handleFriend(JOYSTICK *joystick) {
       if (menu == MENU_ACCESS_DIRS) {
         state = STATE_DIRS;
         memset(buffer, 0, sizeof(buffer));
-        len = sendAndReceiveLPUART1("y", buffer, sizeof(buffer));
+        len = sendAndReceiveLPUART1("y\n", buffer, sizeof(buffer));
         render = 1;
       } else if (menu == MENU_UPD_BRIGHT && brightness <= 95) {
         brightness += 5;
@@ -276,7 +276,7 @@ void handleFriend(JOYSTICK *joystick) {
       }
     } else if (state == STATE_DIRS) {
       memset(buffer, 0, sizeof(buffer));
-      len = sendAndReceiveLPUART1("g", buffer, sizeof(buffer));
+      len = sendAndReceiveLPUART1("g\n", buffer, sizeof(buffer));
       render = 1;
     }
   }
