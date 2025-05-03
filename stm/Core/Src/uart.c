@@ -28,35 +28,30 @@ void sendCharLPUART1(const char c) {
   LPUART1->TDR = c;
 }
 
-int receiveLPUART1(char *buffer, int size, int terminate) {
+int receiveLPUART1(char *buffer, int size, int string) {
   int cnt = 0;
 
   while (cnt < size) {
-    // Timeout if we haven't received a
-    // byte for 50ms.
-    setSysTickCountdown(50);
-    while (BITCHECK(LPUART1->ISR, 5) == 0) {
-      if (BITCHECK(SysTick->CTRL, 16) == 1)
-        return 0;
-    }
+    while (BITCHECK(LPUART1->ISR, 5) == 0)
+      ;
 
     char received = LPUART1->RDR;
     buffer[cnt++] = received;
 
-    if (received == '\0')
+    if (string == 1 && received == '\0')
       break;
   }
 
-  if (terminate == 1)
+  if (string == 1)
     buffer[cnt] = '\0';
 
   return cnt;
 }
 
 int sendAndReceiveLPUART1(const char *chars, char end, char *buffer, int size,
-                          int terminate) {
+                          int string) {
   sendLPUART1(chars, end);
-  return receiveLPUART1(buffer, size, terminate);
+  return receiveLPUART1(buffer, size, string);
 }
 
 void initLPUART1() {

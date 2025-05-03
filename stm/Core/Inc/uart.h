@@ -33,12 +33,12 @@ void sendCharLPUART1(const char c);
  *
  * @param buffer The buffer to receive the characters into
  * @param size The size of the buffer
- * @param terminate 1 if the buffer should be null-terminated,
- * 0 if not
+ * @param string 1 if the received bytes should be interpreted
+ * as C-strings and the buffer should be null-terminated, 0 otherwise
  *
  * @return The number of characters received
  */
-int receiveLPUART1(char *buffer, int size, int terminate);
+int receiveLPUART1(char *buffer, int size, int string);
 
 /**
  * Sends the characters over LPUART1, then immediately
@@ -49,13 +49,13 @@ int receiveLPUART1(char *buffer, int size, int terminate);
  * @param end The character to stop sending at
  * @param buffer The buffer to receive the characters into
  * @param size The size of the buffer
- * @param terminate 1 if the buffer should be null-terminated,
- * 0 if not
+ * @param string 1 if the received bytes should be interpreted
+ * as C-strings and the buffer should be null-terminated, 0 otherwise
  *
  * @return The number of characters received
  */
 int sendAndReceiveLPUART1(const char *chars, const char end, char *buffer,
-                          int size, int terminate);
+                          int size, int string);
 
 /**
  * Initializes LPUART1 on the NUCLEO-L552ZE-Q board.

@@ -12,7 +12,7 @@
 
 // Crystalfontz CFAF128128B-0145T
 enum CFAF128128B_0145T {
-  CFAF_HEIGHT = 127,
+  CFAF_HEIGHT = 129,
   CFAF_WIDTH = 127,
 };
 
@@ -52,6 +52,15 @@ void initLCD(uint16_t bgColor);
  * @param color The color of the filled rectangle
  */
 void renderFilledRectangle(int sX, int sY, int eX, int eY, uint16_t color);
+
+/**
+ * Renders an image to the LCD screen on the
+ * BOOSTXL-EDUMKII.
+ *
+ * @param buffer The image represented as 16-bit pixels
+ * @param size The total size of the image in bytes
+ */
+void renderImage(const char *buffer, int size);
 
 /**
  * Renders a character to the LCD screen on the BOOSTXL-EDUMKII.

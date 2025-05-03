@@ -2,6 +2,7 @@ import serial
 import serial.tools.list_ports
 import time
 from pathlib import Path
+from PIL import Image
 
 """
 Description: App.py is a program created to communicate with the STM32 board utilized for the file follower
@@ -57,6 +58,9 @@ def print_ports(ports):
     for port, desc, hwid in ports:
         port_num = port_num + 1
         print(f"{port_num}) {port}: {desc} [{hwid}]")
+
+def color24to16(r, g, b):
+  return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)
 
 # prints ports
 ports = serial.tools.list_ports.comports()
@@ -125,7 +129,7 @@ while True:
     if value:
         try:
             # removes any invalid bytes
-            value.replace(b'\xFF', b'')
+            value = value.replace(b'\xFF', b'')
             string_value = value.decode('utf-8').strip() # gets received string
 
             # ensures empty strings are ignored
@@ -160,7 +164,11 @@ while True:
                     print(f"Error: Invalid command '{parts[0]}'")
                     continue
 
-                directory_path = current_path / parts[1] # gets the directory path
+                path = parts[1]
+                #if(path[-1] == '/'):
+                 #   path = path[:-1]
+
+                directory_path = current_path / path # gets the directory path
 
                 # checks if the specified directory name is a valid directory
                 if directory_path.is_dir():
@@ -169,7 +177,29 @@ while True:
                     file_tree = get_file_tree_string(directory_path) # gets the contents of the directory
                     ser.write(b'd:' + file_tree.encode('utf-8') + b'\0') # sends contents over UART
                 else:
-                    print(f"Error: '{directory_path}' is not a valid path.") # error checking
+                    try:
+                        image = Image.open(directory_path)
+                        image.verify()
+                        image = Image.open(directory_path)
+                        current_path = directory_path
+                        new_size = (128, 130)
+                        new_image = image.resize(new_size)
+                        width, height = new_image.size
+                        pixels = new_image.load()
+                        processed_pixels = bytearray()
+
+                        for y in range(height):
+                            for x in range(width):
+                                r, g, b = pixels[x, y]
+                                pixel = color24to16(r, g, b)
+                                processed_pixels.extend(pixel.to_bytes(2, 'little'))
+                        
+                        by = bytes(processed_pixels)
+                        ser.write(b'b:' + len(processed_pixels).to_bytes(4, 'little') + by)
+                    except Exception as e:
+                        print(f"Exception type: {type(e)}")
+                        print(f"Exception value: {e}")
+                        print(f"Error: '{directory_path}' is not a valid path.") # error checking
 
         # exception checking
         except UnicodeDecodeError:

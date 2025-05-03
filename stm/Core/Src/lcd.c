@@ -397,6 +397,18 @@ void renderFilledRectangle(int sX, int sY, int eX, int eY, uint16_t color) {
   sendLCDCommand(ST7735_NOP);
 }
 
+void renderImage(const char *buffer, int size) {
+  setRenderFrame(0, 0, CFAF_WIDTH, CFAF_HEIGHT);
+
+  for (int i = 0; i < size; i += 2) {
+    // Send color
+    sendLCDData((uint8_t)(buffer[i]));
+    sendLCDData((uint8_t)(buffer[i + 1]));
+  }
+
+  sendLCDCommand(ST7735_NOP);
+}
+
 void renderChar(int x, int y, char c, uint16_t charColor, uint16_t bgColor) {
   const int endX = x + PIXELX;
   const int endY = y + PIXELY;

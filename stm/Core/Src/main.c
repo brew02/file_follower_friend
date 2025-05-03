@@ -219,14 +219,7 @@ char *getDirectory(int dir, char *dirs) {
 
   while (*dirs) {
     if (dir == count) {
-      char *tmp = dirs;
-      while (*dirs && *dirs != '\n') {
-        if (*dirs++ == '/' && (*dirs == '\0' || *dirs == '\n')) {
-          return tmp;
-        }
-      }
-
-      return NULL;
+      return dirs;
     }
 
     if (*dirs++ == '\n') {
@@ -248,17 +241,25 @@ int rootDir(char *buffer, int size) {
   return receiveLPUART1(buffer, size, 1);
 }
 
-int openPath(char *path, char *buffer, int size) {
+typedef enum { TYPE_INVALID = -1, TYPE_DIR, TYPE_IMG, TYPE_FILE } OPEN_TYPE;
+
+int openPath(char *path, char *buffer, OPEN_TYPE *type, int size) {
   sendLPUART1("o:", '\0');
-  sendLPUART1(path, '/');
+  sendLPUART1(path, '\n');
   sendCharLPUART1('\n');
 
   char cmd[2] = {0};
   receiveLPUART1(cmd, sizeof(cmd), 0);
-  if (cmd[0] != 'd' || cmd[1] != ':')
-    return 0;
+  if (cmd[0] == 'd' && cmd[1] == ':') {
+    *type = TYPE_DIR;
+    return receiveLPUART1(buffer, size, 1);
+  } else if (cmd[0] == 'b' && cmd[1] == ':') {
+    *type = TYPE_IMG;
+    receiveLPUART1((char *)&size, sizeof(size), 0);
+    return receiveLPUART1(buffer, size, 0);
+  }
 
-  return receiveLPUART1(buffer, size, 1);
+  return 0;
 }
 
 int parentDir(char *buffer, int size) {
@@ -284,6 +285,7 @@ void handleFriend(JOYSTICK *joystick) {
   static int len = 0;
   static int render = 0;
   static int currentY = 0;
+  static OPEN_TYPE type = TYPE_INVALID;
 
   if (topButton) {
     if (state == STATE_MENU) {
@@ -292,6 +294,7 @@ void handleFriend(JOYSTICK *joystick) {
         if (cnt == 0)
           return;
 
+        type = TYPE_DIR;
         len = cnt;
         state = STATE_DIRS;
         render = 1;
@@ -303,7 +306,7 @@ void handleFriend(JOYSTICK *joystick) {
     } else if (state == STATE_DIRS) {
       char *path = getDirectory(currentY, buffer);
       if (path != NULL) {
-        int cnt = openPath(path, buffer, sizeof(buffer));
+        int cnt = openPath(path, buffer, &type, sizeof(buffer));
         if (cnt == 0)
           return;
 
@@ -324,6 +327,7 @@ void handleFriend(JOYSTICK *joystick) {
       if (cnt == 0)
         return;
 
+      type = TYPE_DIR;
       len = cnt;
       currentY = 0;
       render = 1;
@@ -347,8 +351,12 @@ void handleFriend(JOYSTICK *joystick) {
     if (render && len != 0) {
       // Refresh the screen (can be made more efficient)
       renderFilledRectangle(0, 0, CFAF_WIDTH, CFAF_HEIGHT, bgColor);
-      renderDirectories(currentY, buffer, cursorColor, dirColor, textColor,
-                        bgColor);
+      if (type == TYPE_DIR) {
+        renderDirectories(currentY, buffer, cursorColor, dirColor, textColor,
+                          bgColor);
+      } else if (type == TYPE_IMG) {
+        renderImage(buffer, sizeof(buffer));
+      }
     }
 
     render = 0;
