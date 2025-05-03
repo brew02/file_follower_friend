@@ -46,8 +46,6 @@ enum ST7735_COMMANDS {
   ST7735_GMCTRN1 = 0xE1
 };
 
-int brightness = 20;
-
 static const uint8_t font[] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x3E, 0x5B, 0x4F, 0x5B, 0x3E, 0x3E, 0x6B,
     0x4F, 0x6B, 0x3E, 0x1C, 0x3E, 0x7C, 0x3E, 0x1C, 0x18, 0x3C, 0x7E, 0x3C,
@@ -521,13 +519,14 @@ uint16_t color24to16(uint8_t r, uint8_t g, uint8_t b) {
           ((uint16_t)b >> 3));
 }
 
-void renderMenu() {
+void renderMenu(FFFContext *ctx) {
   char text[100] = {0};
-  if (state != STATE_MENU)
+  if (ctx->state != STATE_MENU)
     return;
 
   memset(text, 0, sizeof(text));
-  sprintf(text, "Directories\nBrightness: %0*d", 3, brightness);
+  sprintf(text, "Directories\nBrightness: %0*d", 3, ctx->brightness);
 
-  renderDirectories(menu, text, cursorColor, dirColor, textColor, bgColor);
+  renderDirectories(ctx->menuState, text, ctx->colors.cursor, ctx->colors.dir,
+                    ctx->colors.text, ctx->colors.bg);
 }

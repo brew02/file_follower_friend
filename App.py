@@ -182,8 +182,7 @@ while True:
                         image.verify()
                         image = Image.open(directory_path)
                         current_path = directory_path
-                        new_size = (128, 130)
-                        new_image = image.resize(new_size)
+                        new_image = image.resize((128, 130))
                         width, height = new_image.size
                         pixels = new_image.load()
                         processed_pixels = bytearray()
@@ -194,8 +193,7 @@ while True:
                                 pixel = color24to16(r, g, b)
                                 processed_pixels.extend(pixel.to_bytes(2, 'little'))
                         
-                        by = bytes(processed_pixels)
-                        ser.write(b'b:' + len(processed_pixels).to_bytes(4, 'little') + by)
+                        ser.write(b'b:' + len(processed_pixels).to_bytes(4, 'little') + bytes(processed_pixels))
                     except Exception as e:
                         print(f"Exception type: {type(e)}")
                         print(f"Exception value: {e}")

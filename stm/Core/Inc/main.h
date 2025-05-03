@@ -14,8 +14,35 @@ extern "C" {
 typedef enum { STATE_MENU, STATE_DIRS } FFFState;
 typedef enum { MENU_ACCESS_DIRS, MENU_UPD_BRIGHT } FFFMenu;
 
-extern FFFState state;
-extern FFFMenu menu;
+typedef struct {
+  uint16_t vert;
+  uint16_t horz;
+} Joystick;
+
+typedef struct {
+  int top;
+  int bottom;
+  int joystick;
+} Buttons;
+
+typedef struct {
+  uint16_t bg;
+  uint16_t text;
+  uint16_t dir;
+  uint16_t cursor;
+} Colors;
+
+typedef struct {
+  FFFState state;
+  FFFMenu menuState;
+  Joystick joystick;
+  Buttons buttons;
+  Colors colors;
+  int brightness;
+  int render;
+} FFFContext;
+
+extern FFFContext gCtx;
 
 #ifdef __cplusplus
 }

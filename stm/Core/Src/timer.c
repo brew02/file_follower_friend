@@ -26,24 +26,6 @@ void delayMS(unsigned long val) {
   }
 }
 
-void setSysTickCountdown(unsigned long val) {
-  (void)BITCHECK((*(volatile unsigned long *)&SysTick->CTRL),
-                 16);         // Clears COUNTFLAG
-  BITCLEAR(SysTick->CTRL, 0); // Disable SysTick
-  SysTick->LOAD =
-      (16000 * val) - 1;    // Period of 1 MS * val (16MHz / (16000 * val))
-  SysTick->VAL = 0;         // Reset counter
-  BITSET(SysTick->CTRL, 2); // Use processor clock
-  BITSET(SysTick->CTRL, 0); // Enable SysTick
-}
-
-void resetTIM1Count() {
-  BITCLEAR(TIM1->CR1, 0); // Disable TIM1
-  BITSET(TIM1->EGR, 0);   // Update generation
-  BITCLEAR(TIM1->SR, 0);  // Clear update interrupt flag
-  BITSET(TIM1->CR1, 0);   // Enable TIM1
-}
-
 void initTimers(int pwm) {
   TIM3->CR1 = 0;
   TIM3->PSC = 1;          // Period of 125 NS (16MHz / 2)

@@ -10,6 +10,8 @@
 
 #include <stdint.h>
 
+#include "main.h"
+
 // Crystalfontz CFAF128128B-0145T
 enum CFAF128128B_0145T {
   CFAF_HEIGHT = 129,
@@ -28,12 +30,6 @@ enum LCD_CHARS {
   LIMITX = ((CFAF_WIDTH + 1) / PIXEL_SPACEX) - 1,
   LIMITY = ((CFAF_HEIGHT + 1) / PIXEL_SPACEY) - 1
 };
-
-extern uint16_t bgColor;
-extern uint16_t textColor;
-extern uint16_t dirColor;
-extern uint16_t cursorColor;
-extern int brightness;
 
 /**
  * Initializes the LCD screen on the BOOSTXL-EDUMKII.
@@ -135,7 +131,9 @@ uint16_t color24to16(uint8_t r, uint8_t g, uint8_t b);
 
 /**
  * Renders the menu if in the menu state.
+ *
+ * @param ctx The File Follower Friend context
  */
-void renderMenu();
+void renderMenu(FFFContext *ctx);
 
 #endif

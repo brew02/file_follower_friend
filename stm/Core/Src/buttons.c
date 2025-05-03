@@ -15,10 +15,6 @@
 #include "timer.h"
 #include "uart.h"
 
-int topButton = 0;
-int bottomButton = 0;
-int joystickButton = 0;
-
 void initButtons() {
   BITCLEAR(EXTI->EXTICR[1], 31); // Select GPIOE 7
   BITCLEAR(EXTI->EXTICR[1], 30);
@@ -91,8 +87,7 @@ void EXTI13_IRQHandler() {
  * It must have this exact name).
  */
 void EXTI7_IRQHandler() {
-  // This is the joystick push button
-  joystickButton = 1;
+  gCtx.buttons.joystick = 1;
   BITSET(EXTI->RPR1, 7); // Clear interrupt flag for external interrupt 7
 }
 
@@ -101,8 +96,7 @@ void EXTI7_IRQHandler() {
  * It must have this exact name).
  */
 void EXTI6_IRQHandler() {
-  // This is the bottom button on the BOOSTXL-EDUMKII
-  bottomButton = 1;
+  gCtx.buttons.bottom = 1;
   BITSET(EXTI->RPR1, 6); // Clear interrupt flag for external interrupt 6
 }
 
@@ -111,7 +105,6 @@ void EXTI6_IRQHandler() {
  * It must have this exact name).
  */
 void EXTI5_IRQHandler() {
-  // This is the top button on the BOOSTXL-EDUMKII
-  topButton = 1;
+  gCtx.buttons.top = 1;
   BITSET(EXTI->RPR1, 5); // Clear interrupt flag for external interrupt 5
 }
