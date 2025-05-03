@@ -138,7 +138,7 @@ while True:
             if string_value == 'y':
                 print(f"Sending current directory")
                 file_tree = get_file_tree_string(r".") # gets contents of the current directory
-                ser.write(file_tree.encode('utf-8') + b'\0') # writes string over UART
+                ser.write(b'd:' + file_tree.encode('utf-8') + b'\0') # writes string over UART
 
             # checks if 'g' character received
             elif string_value == 'g':
@@ -149,22 +149,27 @@ while True:
                     print(f"Moving to parent directory: {parent}")
                     current_path = parent # gets the parent path
                     tree = get_file_tree_string(current_path) # gets contents of parent
-                    ser.write(tree.encode('utf-8') + b'\0') # sends parent contents over UART
+                    ser.write(b'd:' + tree.encode('utf-8') + b'\0') # sends parent contents over UART
                 else:
                     print(f"Error: Parent directory does not exist.\n") # error checking
 
             # checks if the user submitted a directory to look at
             elif string_value:
-                directory_path = current_path / string_value # gets the directory path
+                parts = string_value.split(":", 1)
+                if(parts[0] != "o"):
+                    print(f"Error: Invalid command '{parts[0]}'")
+                    continue
+
+                directory_path = current_path / parts[1] # gets the directory path
 
                 # checks if the specified directory name is a valid directory
                 if directory_path.is_dir():
                     current_path = directory_path # gets the path
                     print(f"Sending file tree for {directory_path}...")
                     file_tree = get_file_tree_string(directory_path) # gets the contents of the directory
-                    ser.write(file_tree.encode('utf-8') + b'\0') # sends contents over UART
+                    ser.write(b'd:' + file_tree.encode('utf-8') + b'\0') # sends contents over UART
                 else:
-                    print(f"Error: '{directory_path}' is not a valid directory.") # error checking
+                    print(f"Error: '{directory_path}' is not a valid path.") # error checking
 
         # exception checking
         except UnicodeDecodeError:

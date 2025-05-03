@@ -81,7 +81,7 @@ void initButtons() {
  * It must have this exact name).
  */
 void EXTI13_IRQHandler() {
-  sendLPUART1("y");
+  sendLPUART1("y\n", '\0');
   EXTI->RPR1 = (1 << 13); // Clear interrupt flag for PC13
 }
 

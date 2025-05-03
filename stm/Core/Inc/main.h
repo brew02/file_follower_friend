@@ -8,7 +8,8 @@ extern "C" {
 
 #include "stm32l5xx_hal.h"
 #include "stm32l5xx_nucleo.h"
-#include <stdio.h>
+
+// File Follower Friend States
 
 typedef enum { STATE_MENU, STATE_DIRS } FFFState;
 typedef enum { MENU_ACCESS_DIRS, MENU_UPD_BRIGHT } FFFMenu;

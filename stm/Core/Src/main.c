@@ -19,6 +19,11 @@
 #include "timer.h"
 #include "uart.h"
 
+typedef struct {
+  uint16_t vert;
+  uint16_t horz;
+} JOYSTICK;
+
 uint16_t bgColor = 0;
 uint16_t textColor = 0;
 uint16_t dirColor = 0;
@@ -208,7 +213,7 @@ void initADC1() {
  */
 char *getDirectory(int dir, char *dirs) {
   int count = 0;
-  if (count < 0 || count >= 15) {
+  if (count < 0 || count > LIMITY) {
     return NULL;
   }
 
@@ -217,8 +222,6 @@ char *getDirectory(int dir, char *dirs) {
       char *tmp = dirs;
       while (*dirs && *dirs != '\n') {
         if (*dirs++ == '/' && (*dirs == '\0' || *dirs == '\n')) {
-          *(dirs) = '\0';
-          *(dirs - 1) = '\n';
           return tmp;
         }
       }
@@ -234,10 +237,40 @@ char *getDirectory(int dir, char *dirs) {
   return NULL;
 }
 
-typedef struct {
-  uint16_t vert;
-  uint16_t horz;
-} JOYSTICK;
+int rootDir(char *buffer, int size) {
+  sendLPUART1("y\n", '\0');
+
+  char cmd[2] = {0};
+  receiveLPUART1(cmd, sizeof(cmd), 0);
+  if (cmd[0] != 'd' || cmd[1] != ':')
+    return 0;
+
+  return receiveLPUART1(buffer, size, 1);
+}
+
+int openPath(char *path, char *buffer, int size) {
+  sendLPUART1("o:", '\0');
+  sendLPUART1(path, '/');
+  sendCharLPUART1('\n');
+
+  char cmd[2] = {0};
+  receiveLPUART1(cmd, sizeof(cmd), 0);
+  if (cmd[0] != 'd' || cmd[1] != ':')
+    return 0;
+
+  return receiveLPUART1(buffer, size, 1);
+}
+
+int parentDir(char *buffer, int size) {
+  sendLPUART1("g\n", '\0');
+
+  char cmd[2] = {0};
+  receiveLPUART1(cmd, sizeof(cmd), 0);
+  if (cmd[0] != 'd' || cmd[1] != ':')
+    return 0;
+
+  return receiveLPUART1(buffer, size, 1);
+}
 
 /**
  * Handles the main functionality of File
@@ -247,18 +280,19 @@ typedef struct {
  * vertical and horizontal values of the joystick
  */
 void handleFriend(JOYSTICK *joystick) {
-  static char buffer[MAX_BUF_SIZE];
-  static size_t len = 0;
+  static char buffer[((CFAF_HEIGHT + 1) * (CFAF_WIDTH + 1) * 2) + 1];
+  static int len = 0;
   static int render = 0;
   static int currentY = 0;
 
   if (topButton) {
     if (state == STATE_MENU) {
       if (menu == MENU_ACCESS_DIRS) {
-        len = sendAndReceiveLPUART1("y\n", buffer, sizeof(buffer));
-        if (len == 0)
+        int cnt = rootDir(buffer, sizeof(buffer));
+        if (cnt == 0)
           return;
 
+        len = cnt;
         state = STATE_DIRS;
         render = 1;
       } else if (menu == MENU_UPD_BRIGHT && brightness <= 95) {
@@ -267,12 +301,13 @@ void handleFriend(JOYSTICK *joystick) {
         render = 1;
       }
     } else if (state == STATE_DIRS) {
-      char *dir = getDirectory(currentY, buffer);
-      if (dir != NULL) {
-        len = sendAndReceiveLPUART1(dir, buffer, sizeof(buffer));
-        if (len == 0)
+      char *path = getDirectory(currentY, buffer);
+      if (path != NULL) {
+        int cnt = openPath(path, buffer, sizeof(buffer));
+        if (cnt == 0)
           return;
 
+        len = cnt;
         currentY = 0;
         render = 1;
       }
@@ -285,10 +320,11 @@ void handleFriend(JOYSTICK *joystick) {
         render = 1;
       }
     } else if (state == STATE_DIRS) {
-      len = sendAndReceiveLPUART1("g\n", buffer, sizeof(buffer));
-      if (len == 0)
+      int cnt = parentDir(buffer, sizeof(buffer));
+      if (cnt == 0)
         return;
 
+      len = cnt;
       currentY = 0;
       render = 1;
     }
