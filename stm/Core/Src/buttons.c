@@ -17,6 +17,7 @@
 
 int topButton = 0;
 int bottomButton = 0;
+int joystickButton = 0;
 
 void initButtons() {
   BITCLEAR(EXTI->EXTICR[1], 31); // Select GPIOE 7
@@ -91,6 +92,7 @@ void EXTI13_IRQHandler() {
  */
 void EXTI7_IRQHandler() {
   // This is the joystick push button
+  joystickButton = 1;
   BITSET(EXTI->RPR1, 7); // Clear interrupt flag for external interrupt 7
 }
 

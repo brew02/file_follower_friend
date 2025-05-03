@@ -12,6 +12,7 @@
 
 extern int topButton;
 extern int bottomButton;
+extern int joystickButton;
 
 /**
  * Initializes external interrupts for various buttons.

@@ -332,10 +332,18 @@ void handleFriend(JOYSTICK *joystick) {
       currentY = 0;
       render = 1;
     }
+  } else if (joystickButton) {
+    state = STATE_MENU;
+    menu = MENU_ACCESS_DIRS;
+    type = TYPE_INVALID;
+    len = 0;
+    currentY = 0;
+    render = 1;
   }
 
   topButton = 0;
   bottomButton = 0;
+  joystickButton = 0;
 
   if (state == STATE_DIRS) {
     if (joystick->vert >= 2400 && joystick->vert <= 2700 && currentY != 0) {
