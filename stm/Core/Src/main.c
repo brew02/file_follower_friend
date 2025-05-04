@@ -152,18 +152,7 @@ void initGPIOs() {
   BITSET(GPIOA->MODER, 8);
 }
 
-/**
- * Gets the directory from a string containing all
- * content in the current directory.
- *
- * @param dir The directory to get
- * @param dirs The content of the current directory
- *
- * @return NULL if the specified directory is not
- * a directory, a string representing the relative
- * path of the directory otherwise.
- */
-char *getDirectory(int dir, char *dirs) {
+const char *getDirectory(int dir, const char *dirs) {
   int count = 0;
   if (count < 0 || count > LIMITY) {
     return NULL;
@@ -180,6 +169,16 @@ char *getDirectory(int dir, char *dirs) {
   }
 
   return NULL;
+}
+
+int getDirectoryLength(char *dir) {
+  int len = 0;
+  while (*dir && *dir != '\n') {
+    ++len;
+    ++dir;
+  }
+
+  return len;
 }
 
 int rootDir(char *buffer, int size) {
@@ -263,7 +262,7 @@ void handleFriend(FFFContext *ctx) {
         ctx->render = 1;
       }
     } else if (ctx->state == STATE_DIRS && type == TYPE_DIR) {
-      char *path = getDirectory(ctx->currentY, buffer);
+      char *path = (char *)getDirectory(ctx->currentY, buffer);
       if (path != NULL) {
         int cnt = openPath(path, buffer, &type, sizeof(buffer));
         if (cnt == 0)
@@ -271,6 +270,7 @@ void handleFriend(FFFContext *ctx) {
 
         len = cnt;
         ctx->currentY = 0;
+        ctx->currentX = 0;
         ctx->render = 1;
       }
     }
@@ -292,7 +292,8 @@ void handleFriend(FFFContext *ctx) {
       type = TYPE_DIR;
       len = cnt;
       ctx->currentY = 0;
-      gCtx.render = 1;
+      ctx->currentX = 0;
+      ctx->render = 1;
     }
   } else if (ctx->buttons.joystick) {
     ctx->buttons.joystick = 0;
@@ -301,6 +302,7 @@ void handleFriend(FFFContext *ctx) {
     type = TYPE_INVALID;
     len = 0;
     ctx->currentY = 0;
+    ctx->currentX = 0;
     ctx->render = 1;
   }
 
@@ -312,14 +314,16 @@ void handleFriend(FFFContext *ctx) {
       // Refresh the screen (can be made more efficient)
       renderFilledRectangle(0, 0, CFAF_WIDTH, CFAF_HEIGHT, ctx->colors.bg);
       if (type == TYPE_DIR) {
-        renderDirectories(ctx->currentY, buffer, ctx->colors.cursor,
-                          ctx->colors.dir, ctx->colors.text, ctx->colors.bg);
+        renderDirectories(ctx->currentY, ctx->currentX, buffer,
+                          ctx->colors.cursor, ctx->colors.dir, ctx->colors.text,
+                          ctx->colors.bg);
 
       } else if (type == TYPE_IMG) {
         renderImage(buffer, sizeof(buffer));
       } else if (type == TYPE_FILE) {
-        renderDirectories(ctx->currentY, buffer, ctx->colors.cursor,
-                          ctx->colors.text, ctx->colors.text, ctx->colors.bg);
+        renderDirectories(ctx->currentY, ctx->currentX, buffer,
+                          ctx->colors.cursor, ctx->colors.text,
+                          ctx->colors.text, ctx->colors.bg);
       }
 
       ctx->render = 0;

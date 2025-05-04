@@ -104,7 +104,8 @@ unsigned long renderString(int x, int y, const char *text, uint16_t textColor,
  * Renders the directories to the LCD screen on the
  * BOOSTXL-EDUMKII.
  *
- * @param current The current directory we are on
+ * @param currentY The current directory we are on
+ * @param currentX The current line character we are on
  * @param dirs The directories as a null-terminated, newline separated string
  * @param cursorColor The color for the cursor
  * @param dirColor The color for printing directories
@@ -113,7 +114,7 @@ unsigned long renderString(int x, int y, const char *text, uint16_t textColor,
  *
  * @return The number of characters rendered
  */
-unsigned long renderDirectories(int current, const char *dirs,
+unsigned long renderDirectories(int currentY, int currentX, const char *dirs,
                                 uint16_t cursorColor, uint16_t dirColor,
                                 uint16_t textColor, uint16_t bgColor);
 

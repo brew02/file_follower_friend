@@ -465,7 +465,7 @@ unsigned long renderString(int x, int y, const char *text, uint16_t textColor,
   return renderStringSafe(x, y, LIMITX, text, textColor, bgColor);
 }
 
-unsigned long renderDirectories(int current, const char *dirs,
+unsigned long renderDirectories(int currentY, int currentX, const char *dirs,
                                 uint16_t cursorColor, uint16_t dirColor,
                                 uint16_t textColor, uint16_t bgColor) {
   unsigned long cnt = 0;
@@ -479,7 +479,18 @@ unsigned long renderDirectories(int current, const char *dirs,
     x = 0;
     isDir = 0;
 
-    if (y == current) {
+    if (y == currentY) {
+      char *dir = (char *)getDirectory(currentY, dirs);
+      if (dir == NULL)
+        return cnt;
+
+      int len = getDirectoryLength(dir);
+      if (currentX >= len)
+        return cnt;
+
+      start += currentX;
+      end += currentX;
+
       renderStringSafe(x, y, 2, "> ", cursorColor, bgColor);
       x += 2;
       cnt += 2;
@@ -527,6 +538,6 @@ void renderMenu(FFFContext *ctx) {
   memset(text, 0, sizeof(text));
   sprintf(text, "Directories\nBrightness: %0*d", 3, ctx->brightness);
 
-  renderDirectories(ctx->menuState, text, ctx->colors.cursor, ctx->colors.dir,
-                    ctx->colors.text, ctx->colors.bg);
+  renderDirectories(ctx->menuState, 0, text, ctx->colors.cursor,
+                    ctx->colors.dir, ctx->colors.text, ctx->colors.bg);
 }

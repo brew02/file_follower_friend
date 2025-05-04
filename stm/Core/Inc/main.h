@@ -40,10 +40,35 @@ typedef struct {
   Colors colors;
   int brightness;
   int currentY;
+  int currentX;
   int render;
 } FFFContext;
 
 extern FFFContext gCtx;
+
+/**
+ * Gets the directory from a string containing all
+ * content in the current directory.
+ *
+ * @param dir The directory to get
+ * @param dirs The content of the current directory
+ *
+ * @return NULL if the specified directory is not
+ * a directory, a string representing the relative
+ * path of the directory otherwise.
+ */
+const char *getDirectory(int dir, const char *dirs);
+
+/**
+ * Gets the number of characters that make
+ * up a directory. Terminators are newline
+ * and the null-terminator.
+ *
+ * @param dir The directory to get the length for
+ *
+ * @return The length of the directory
+ */
+int getDirectoryLength(char *dir);
 
 #ifdef __cplusplus
 }

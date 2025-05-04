@@ -90,7 +90,8 @@ void initJoystick() {
 }
 
 void ADC1_2_IRQHandler() {
-  static int polled = 0;
+  static int polledY = 0;
+  static int polledX = 0;
 
   // Check if it was the end of a regular sequence
   if (BITCHECK(ADC1->ISR, 3) == 1) {
@@ -100,9 +101,9 @@ void ADC1_2_IRQHandler() {
     uint16_t vert = gCtx.joystick.vert & 0xFFF;
     uint16_t horz = gCtx.joystick.horz & 0xFFF;
 
-    if (vert >= 1500 && vert <= 2500 && polled == 1) {
-      polled = 0;
-    } else if (vert >= 3000 && polled != 1) {
+    if (vert >= 1500 && vert <= 2500 && polledY == 1) {
+      polledY = 0;
+    } else if (vert >= 3000 && polledY != 1) {
 
       if (gCtx.state == STATE_DIRS && gCtx.currentY != 0) {
         gCtx.currentY--;
@@ -113,8 +114,8 @@ void ADC1_2_IRQHandler() {
       }
 
       gCtx.render = 1;
-      polled = 1;
-    } else if (vert <= 1000 && polled != 1) {
+      polledY = 1;
+    } else if (vert <= 1000 && polledY != 1) {
 
       if (gCtx.state == STATE_DIRS && gCtx.currentY != LIMITY) {
         gCtx.currentY++;
@@ -124,7 +125,26 @@ void ADC1_2_IRQHandler() {
       }
 
       gCtx.render = 1;
-      polled = 1;
+      polledY = 1;
+    }
+
+    if (horz >= 1300 && horz <= 2300 && polledX == 1) {
+      polledX = 0;
+    } else if (horz >= 2700 && polledX != 1) {
+
+      if (gCtx.state == STATE_DIRS) {
+        gCtx.currentX++;
+      }
+
+      gCtx.render = 1;
+      polledX = 1;
+    } else if (horz <= 1000 && polledX != 1) {
+      if (gCtx.state == STATE_DIRS && gCtx.currentX != 0) {
+        gCtx.currentX--;
+      }
+
+      gCtx.render = 1;
+      polledX = 1;
     }
   }
 }
