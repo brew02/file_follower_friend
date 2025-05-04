@@ -9,12 +9,13 @@
 #include "bitmacro.h"
 #include "main.h"
 #include "stm32l552xx.h"
+#include "timer.h"
 
-void sendLPUART1(const char *chars) {
+void sendLPUART1(const char *chars, const char end) {
   int idx = 0;
 
-  // While we haven't reached the null-terminator, send the chars
-  while (chars[idx] != '\0') {
+  // While we haven't reached the end char, send the chars
+  while (chars[idx] != end) {
     while (BITCHECK(LPUART1->ISR, 7) == 0)
       ;
     LPUART1->TDR = chars[idx++];
@@ -27,29 +28,30 @@ void sendCharLPUART1(const char c) {
   LPUART1->TDR = c;
 }
 
-size_t receiveLPUART1(char *buffer, size_t size) {
-  size_t cnt = 0;
+int receiveLPUART1(char *buffer, int size, int string) {
+  int cnt = 0;
 
-  while (cnt < (size - 1)) {
+  while (cnt < size) {
     while (BITCHECK(LPUART1->ISR, 5) == 0)
       ;
-    char received = LPUART1->RDR;
 
-    if (received == '\0') {
-      buffer[cnt++] = '\0';
+    char received = LPUART1->RDR;
+    buffer[cnt++] = received;
+
+    if (string == 1 && received == '\0')
       break;
-    } else {
-      buffer[cnt++] = received;
-    }
   }
 
-  buffer[cnt] = '\0';
+  if (string == 1)
+    buffer[cnt] = '\0';
+
   return cnt;
 }
 
-size_t sendAndReceiveLPUART1(const char *chars, char *buffer, size_t size) {
-  sendLPUART1(chars);
-  return receiveLPUART1(buffer, size);
+int sendAndReceiveLPUART1(const char *chars, char end, char *buffer, int size,
+                          int string) {
+  sendLPUART1(chars, end);
+  return receiveLPUART1(buffer, size, string);
 }
 
 void initLPUART1() {

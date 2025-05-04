@@ -11,14 +11,13 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#define MAX_BUF_SIZE (1024) // Max string length
-
 /**
  * Sends the characters over LPUART1.
  *
- * @param chars A null-terminated string of characters to send
+ * @param chars An array of characters to send
+ * @param end The character to stop sending at
  */
-void sendLPUART1(const char *chars);
+void sendLPUART1(const char *chars, const char end);
 
 /**
  * Sends the character over LPUART1.
@@ -34,23 +33,29 @@ void sendCharLPUART1(const char c);
  *
  * @param buffer The buffer to receive the characters into
  * @param size The size of the buffer
+ * @param string 1 if the received bytes should be interpreted
+ * as C-strings and the buffer should be null-terminated, 0 otherwise
  *
  * @return The number of characters received
  */
-size_t receiveLPUART1(char *buffer, size_t size);
+int receiveLPUART1(char *buffer, int size, int string);
 
 /**
  * Sends the characters over LPUART1, then immediately
  * receives characters over LPUART1 until the buffer size is
  * reached, or a newline character is found.
  *
- * @param chars A null-terminated string of characters to send
+ * @param chars An array of characters to send
+ * @param end The character to stop sending at
  * @param buffer The buffer to receive the characters into
  * @param size The size of the buffer
+ * @param string 1 if the received bytes should be interpreted
+ * as C-strings and the buffer should be null-terminated, 0 otherwise
  *
  * @return The number of characters received
  */
-size_t sendAndReceiveLPUART1(const char *chars, char *buffer, size_t size);
+int sendAndReceiveLPUART1(const char *chars, const char end, char *buffer,
+                          int size, int string);
 
 /**
  * Initializes LPUART1 on the NUCLEO-L552ZE-Q board.

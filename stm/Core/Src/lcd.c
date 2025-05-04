@@ -6,6 +6,7 @@
  * @author Brodie Abrew & Lucas Berry
  */
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -44,8 +45,6 @@ enum ST7735_COMMANDS {
   ST7735_GMCTRP1 = 0xE0,
   ST7735_GMCTRN1 = 0xE1
 };
-
-int brightness = 20;
 
 static const uint8_t font[] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x3E, 0x5B, 0x4F, 0x5B, 0x3E, 0x3E, 0x6B,
@@ -362,8 +361,9 @@ void initLCD(uint16_t bgColor) {
   delayMS(10);
 
   // Use inverted row and column address order
+  // Use BGR color order
   sendLCDCommand(ST7735_MADCTL);
-  sendLCDData(0xC0);
+  sendLCDData(0xC8);
 
   // Ensure normal display mode is on
   sendLCDCommand(ST7735_NORON);
@@ -395,9 +395,21 @@ void renderFilledRectangle(int sX, int sY, int eX, int eY, uint16_t color) {
   sendLCDCommand(ST7735_NOP);
 }
 
+void renderImage(const char *buffer, int size) {
+  setRenderFrame(0, 0, CFAF_WIDTH, CFAF_HEIGHT);
+
+  for (int i = 0; i < size; i += 2) {
+    // Send color
+    sendLCDData((uint8_t)(buffer[i]));
+    sendLCDData((uint8_t)(buffer[i + 1]));
+  }
+
+  sendLCDCommand(ST7735_NOP);
+}
+
 void renderChar(int x, int y, char c, uint16_t charColor, uint16_t bgColor) {
-  const int endX = x + 5;
-  const int endY = y + 7;
+  const int endX = x + PIXELX;
+  const int endY = y + PIXELY;
 
   if ((x < 0 || x > CFAF_WIDTH) || (endX < 0 || endX > CFAF_WIDTH) ||
       (y < 0 || y > CFAF_HEIGHT) || (endY < 0 || endY > CFAF_HEIGHT)) {
@@ -407,11 +419,11 @@ void renderChar(int x, int y, char c, uint16_t charColor, uint16_t bgColor) {
   setRenderFrame(x, y, endX, endY);
 
   uint8_t line = 1; // Start with the first row
-  // Loop through each row (8 rows for each character)
-  for (int row = 0; row < 8; ++row) {
+  // Loop through each row
+  for (int row = 0; row < PIXELY; ++row) {
 
-    // 5 columns for each character in the font
-    for (int col = 0; col < 5; ++col) {
+    // Loop through each column
+    for (int col = 0; col < PIXELX; ++col) {
       if (font[(c * 5) + col] & line) {
         // Send the color for the pixel
         sendLCDData((uint8_t)(charColor >> 8));
@@ -432,15 +444,15 @@ void renderChar(int x, int y, char c, uint16_t charColor, uint16_t bgColor) {
   sendLCDCommand(ST7735_NOP);
 }
 
-unsigned long renderString(int x, int y, const char *text, uint16_t textColor,
-                           uint16_t bgColor) {
+unsigned long renderStringSafe(int x, int y, int size, const char *text,
+                               uint16_t textColor, uint16_t bgColor) {
   unsigned long cnt = 0;
-  if (y >= 16)
+  if (y >= LIMITY)
     return 0;
 
   // loop to run through string
-  while (*text && x < 21) {
-    renderChar(x * 6, y * 8, *text++, textColor, bgColor);
+  while (cnt < size && *text && x < LIMITX) {
+    renderChar(x * PIXEL_SPACEX, y * PIXEL_SPACEY, *text++, textColor, bgColor);
     ++x;
     ++cnt;
   }
@@ -448,31 +460,63 @@ unsigned long renderString(int x, int y, const char *text, uint16_t textColor,
   return cnt;
 }
 
-unsigned long renderDirectories(int current, const char *dirs,
+unsigned long renderString(int x, int y, const char *text, uint16_t textColor,
+                           uint16_t bgColor) {
+  return renderStringSafe(x, y, LIMITX, text, textColor, bgColor);
+}
+
+unsigned long renderDirectories(int currentY, int currentX, const char *dirs,
+                                uint16_t cursorColor, uint16_t dirColor,
                                 uint16_t textColor, uint16_t bgColor) {
   unsigned long cnt = 0;
   int x = 0;
   int y = 0;
+  int start = 0;
+  int end = 0;
+  int isDir = 0;
 
-  while (y < 16) {
-    if (y == current) {
-      renderChar(0 * 6, y * 8, '>', textColor, bgColor);
-      renderChar(1 * 6, y * 8, ' ', textColor, bgColor);
+  while (y < LIMITY) {
+    x = 0;
+    isDir = 0;
+
+    if (y == currentY) {
+      char *dir = (char *)getDirectory(currentY, dirs);
+      if (dir == NULL)
+        return cnt;
+
+      int len = getDirectoryLength(dir);
+      if (currentX >= len)
+        return cnt;
+
+      start += currentX;
+      end += currentX;
+
+      renderStringSafe(x, y, 2, "> ", cursorColor, bgColor);
       x += 2;
       cnt += 2;
     }
 
-    while (*dirs && *dirs != '\n' && x < 21) {
-      renderChar(x * 6, y * 8, *dirs++, textColor, bgColor);
-      ++x;
+    while (*(dirs + end) && *(dirs + end) != '\n') {
+      if (*(dirs + end) == '/')
+        isDir = 1;
       ++cnt;
+      ++end;
     }
 
-    if (*dirs == '\0')
+    // We are doing a little bit of extra
+    // rendering if we are past the x limit
+    renderStringSafe(x, y, end - start, dirs + start,
+                     isDir == 1 ? dirColor : textColor, bgColor);
+
+    if ((end - start + x) > LIMITX) {
+      renderStringSafe(LIMITX - 3, y, 3, "...", textColor, bgColor);
+    }
+
+    if (*(dirs + end) == '\0')
       break;
-    x = 0;
+
     ++y;
-    ++dirs;
+    start = ++end;
   }
 
   return cnt;
@@ -486,17 +530,14 @@ uint16_t color24to16(uint8_t r, uint8_t g, uint8_t b) {
           ((uint16_t)b >> 3));
 }
 
-void renderMenu() {
+void renderMenu(FFFContext *ctx) {
   char text[100] = {0};
-  if (state != STATE_MENU)
+  if (ctx->state != STATE_MENU)
     return;
 
   memset(text, 0, sizeof(text));
-  sprintf(text, "%s Directories", (menu == MENU_ACCESS_DIRS ? ">" : " "));
-  renderString(0, 0, text, textColor, bgColor);
-  memset(text, 0, sizeof(text));
-  sprintf(text, "%s Brightness: %0*d", (menu == MENU_UPD_BRIGHT ? ">" : " "), 3,
-          brightness);
+  sprintf(text, "Directories\nBrightness: %0*d", 3, ctx->brightness);
 
-  renderString(0, 1, text, textColor, bgColor);
+  renderDirectories(ctx->menuState, 0, text, ctx->colors.cursor,
+                    ctx->colors.dir, ctx->colors.text, ctx->colors.bg);
 }

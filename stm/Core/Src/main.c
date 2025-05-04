@@ -12,6 +12,7 @@
 
 #include "bitmacro.h"
 #include "buttons.h"
+#include "joystick.h"
 #include "lcd.h"
 #include "main.h"
 #include "spi.h"
@@ -19,10 +20,7 @@
 #include "timer.h"
 #include "uart.h"
 
-uint16_t bgColor = 0;
-uint16_t textColor = 0;
-FFFState state = STATE_MENU;
-FFFMenu menu = MENU_ACCESS_DIRS;
+FFFContext gCtx = {0};
 
 /**
  * Enables peripheral clocks on the NUCLEO-L552ZE-Q board.
@@ -30,6 +28,10 @@ FFFMenu menu = MENU_ACCESS_DIRS;
 void enableClocks() {
   BITSET(RCC->APB1ENR1, 28); // Power interface clock enable
   BITSET(RCC->APB1ENR1, 1);  // TIM3 clock enable
+  BITSET(RCC->APB1ENR1, 0);  // TIM2 clock enable
+
+  BITSET(RCC->AHB1ENR, 2); // DMAMUX1 clock enable
+  BITSET(RCC->AHB1ENR, 0); // DMA1 clock enable
 
   BITSET(RCC->AHB2ENR, 13); // ADC clock enable
   BITSET(RCC->AHB2ENR, 6);  // GPIOG clock enable
@@ -150,78 +152,15 @@ void initGPIOs() {
   BITSET(GPIOA->MODER, 8);
 }
 
-void initADC1() {
-  // Check if the ADC is enabled
-  if (BITCHECK(ADC1->CR, 0) == 1) {
-    BITSET(ADC1->CR, 1); // Disable ADC1
-    // Wait for the ADC to disable
-    while (BITCHECK(ADC1->CR, 0) == 1)
-      ;
-  }
-
-  BITCLEAR(ADC1->CR, 29); // Disable ADC deep-power down
-  BITSET(ADC1->CR, 28);   // Enable ADC voltage regulator
-
-  delayMS(10);
-
-  BITSET(ADC12_COMMON->CCR, 21); // Divide ADC clocks by 32
-  BITCLEAR(ADC12_COMMON->CCR, 20);
-  BITCLEAR(ADC12_COMMON->CCR, 19);
-  BITCLEAR(ADC12_COMMON->CCR, 18);
-
-  BITSET(ADC1->ISR, 0); // Clear ADRDY flag
-
-  BITSET(ADC1->CR, 0);                // Enable ADC1
-  while (BITCHECK(ADC1->ISR, 0) == 0) // Wait for ADC1 to be ready
-    ;
-
-  BITSET(ADC1->ISR, 0); // Clear ADRDY flag
-
-  BITCLEAR(ADC1->JSQR, 18); // Read channel 10 (GPIOA 5)
-  BITSET(ADC1->JSQR, 17);
-  BITCLEAR(ADC1->JSQR, 16);
-  BITSET(ADC1->JSQR, 15);
-  BITCLEAR(ADC1->JSQR, 14);
-
-  BITCLEAR(ADC1->JSQR, 12); // Read channel 9 (GPIOA 4)
-  BITSET(ADC1->JSQR, 11);
-  BITCLEAR(ADC1->JSQR, 10);
-  BITCLEAR(ADC1->JSQR, 9);
-  BITSET(ADC1->JSQR, 8);
-
-  BITCLEAR(ADC1->JSQR, 1); // Read two injected channels
-  BITSET(ADC1->JSQR, 0);
-}
-
-/**
- * Gets the directory from a string containing all
- * content in the current directory.
- *
- * @param dir The directory to get
- * @param dirs The content of the current directory
- *
- * @return NULL if the specified directory is not
- * a directory, a string represnting the relative
- * path of the directory otherwise.
- */
-char *getDirectory(int dir, char *dirs) {
+const char *getDirectory(int dir, const char *dirs) {
   int count = 0;
-  if (count < 0 || count >= 15) {
+  if (count < 0 || count > LIMITY) {
     return NULL;
   }
 
   while (*dirs) {
     if (dir == count) {
-      char *tmp = dirs;
-      while (*dirs && *dirs != '\n') {
-        if (*dirs++ == '/' && (*dirs == '\0' || *dirs == '\n')) {
-          *(dirs) = '\0';
-          *(dirs - 1) = '\n';
-          return tmp;
-        }
-      }
-
-      return NULL;
+      return dirs;
     }
 
     if (*dirs++ == '\n') {
@@ -232,87 +171,171 @@ char *getDirectory(int dir, char *dirs) {
   return NULL;
 }
 
-typedef struct {
-  uint16_t vert;
-  uint16_t horz;
-} JOYSTICK;
+int getDirectoryLength(char *dir) {
+  int len = 0;
+  while (*dir && *dir != '\n') {
+    ++len;
+    ++dir;
+  }
+
+  return len;
+}
+
+int rootDir(char *buffer, int size) {
+  sendLPUART1("y\n", '\0');
+
+  char cmd[2] = {0};
+  receiveLPUART1(cmd, sizeof(cmd), 0);
+  if (cmd[0] != 'd' || cmd[1] != ':')
+    return 0;
+
+  return receiveLPUART1(buffer, size, 1);
+}
+
+typedef enum { TYPE_INVALID = -1, TYPE_DIR, TYPE_IMG, TYPE_FILE } OPEN_TYPE;
+
+int openPath(char *path, char *buffer, OPEN_TYPE *type, int size) {
+  sendLPUART1("o:", '\0');
+  sendLPUART1(path, '\n');
+  sendCharLPUART1('\n');
+
+  char cmd[2] = {0};
+  receiveLPUART1(cmd, sizeof(cmd), 0);
+  if (cmd[0] == 'd' && cmd[1] == ':') {
+    *type = TYPE_DIR;
+    return receiveLPUART1(buffer, size, 1);
+  } else if (cmd[0] == 'b' && cmd[1] == ':') {
+    *type = TYPE_IMG;
+    receiveLPUART1((char *)&size, sizeof(size), 0);
+    return receiveLPUART1(buffer, size, 0);
+  } else if (cmd[0] == 'f' && cmd[1] == ':') {
+    *type = TYPE_FILE;
+    receiveLPUART1((char *)&size, sizeof(size), 0);
+    int len = receiveLPUART1(buffer, size, 0);
+    if (len != 0)
+      buffer[len - 1] = '\0';
+    return len;
+  }
+
+  return 0;
+}
+
+int parentDir(char *buffer, int size) {
+  sendLPUART1("g\n", '\0');
+
+  char cmd[2] = {0};
+  receiveLPUART1(cmd, sizeof(cmd), 0);
+  if (cmd[0] != 'd' || cmd[1] != ':')
+    return 0;
+
+  return receiveLPUART1(buffer, size, 1);
+}
 
 /**
  * Handles the main functionality of File
  * Follower Friend (FFF).
  *
- * @param joystick Contains the ADC converted
- * vertical and horizontal values of the joystick
+ * @param ctx The File Follower Friend context
  */
-void handleFriend(JOYSTICK *joystick) {
-  static char buffer[MAX_BUF_SIZE];
-  static size_t len = 0;
-  static int render = 0;
-  static int current = 0;
+void handleFriend(FFFContext *ctx) {
+  static char buffer[((CFAF_HEIGHT + 1) * (CFAF_WIDTH + 1) * 2) + 1];
+  static int len = 0;
+  static OPEN_TYPE type = TYPE_INVALID;
 
-  if (topButton) {
-    if (state == STATE_MENU) {
-      if (menu == MENU_ACCESS_DIRS) {
-        state = STATE_DIRS;
-        memset(buffer, 0, sizeof(buffer));
-        len = sendAndReceiveLPUART1("y", buffer, sizeof(buffer));
-        render = 1;
-      } else if (menu == MENU_UPD_BRIGHT && brightness <= 95) {
-        brightness += 5;
-        updateTIM3PWM(brightness);
+  if (ctx->buttons.top) {
+    ctx->buttons.top = 0;
+
+    if (ctx->state == STATE_MENU) {
+      if (ctx->menuState == MENU_ACCESS_DIRS) {
+        int cnt = rootDir(buffer, sizeof(buffer));
+        if (cnt == 0)
+          return;
+
+        type = TYPE_DIR;
+        len = cnt;
+        ctx->state = STATE_DIRS;
+        ctx->render = 1;
+      } else if (ctx->menuState == MENU_UPD_BRIGHT) {
+        int brightness = ctx->brightness + 5;
+        ctx->brightness = (brightness > 100 ? 100 : brightness);
+        updateTIM3PWM(ctx->brightness);
+        ctx->render = 1;
       }
-    } else if (state == STATE_DIRS) {
-      char *dir = getDirectory(current, buffer);
-      if (dir != NULL) {
-        len = sendAndReceiveLPUART1(dir, buffer, sizeof(buffer));
-        render = 1;
+    } else if (ctx->state == STATE_DIRS && type == TYPE_DIR) {
+      char *path = (char *)getDirectory(ctx->currentY, buffer);
+      if (path != NULL) {
+        int cnt = openPath(path, buffer, &type, sizeof(buffer));
+        if (cnt == 0)
+          return;
+
+        len = cnt;
+        ctx->currentY = 0;
+        ctx->currentX = 0;
+        ctx->render = 1;
       }
     }
-  } else if (bottomButton) {
-    if (state == STATE_MENU) {
-      if (menu == MENU_UPD_BRIGHT && brightness >= 5) {
-        brightness -= 5;
-        updateTIM3PWM(brightness);
+  } else if (ctx->buttons.bottom) {
+    ctx->buttons.bottom = 0;
+
+    if (ctx->state == STATE_MENU) {
+      if (ctx->menuState == MENU_UPD_BRIGHT) {
+        int brightness = ctx->brightness - 5;
+        ctx->brightness = (brightness < 0 ? 0 : brightness);
+        updateTIM3PWM(ctx->brightness);
+        ctx->render = 1;
       }
-    } else if (state == STATE_DIRS) {
-      memset(buffer, 0, sizeof(buffer));
-      len = sendAndReceiveLPUART1("g", buffer, sizeof(buffer));
-      render = 1;
+    } else if (ctx->state == STATE_DIRS) {
+      int cnt = parentDir(buffer, sizeof(buffer));
+      if (cnt == 0)
+        return;
+
+      type = TYPE_DIR;
+      len = cnt;
+      ctx->currentY = 0;
+      ctx->currentX = 0;
+      ctx->render = 1;
     }
+  } else if (ctx->buttons.joystick) {
+    ctx->buttons.joystick = 0;
+    ctx->state = STATE_MENU;
+    ctx->menuState = MENU_ACCESS_DIRS;
+    type = TYPE_INVALID;
+    len = 0;
+    ctx->currentY = 0;
+    ctx->currentX = 0;
+    ctx->render = 1;
   }
 
-  topButton = 0;
-  bottomButton = 0;
+  if (ctx->state == STATE_DIRS) {
+    if (ctx->render) {
+      if (len == 0)
+        return;
 
-  if (state == STATE_DIRS) {
-    if (joystick->vert >= 2400 && joystick->vert <= 2700 && current != 0) {
-      // Up on joystick
-      --current;
-      render = 1;
-    } else if (joystick->vert < 2000 && current != 16) {
-      // Down on joystick
-      ++current;
-      render = 1;
-    }
-
-    if (render && len != 0) {
       // Refresh the screen (can be made more efficient)
-      renderFilledRectangle(0, 0, CFAF_WIDTH, CFAF_HEIGHT, bgColor);
-      renderDirectories(current, buffer, textColor, bgColor);
+      renderFilledRectangle(0, 0, CFAF_WIDTH, CFAF_HEIGHT, ctx->colors.bg);
+      if (type == TYPE_DIR) {
+        renderDirectories(ctx->currentY, ctx->currentX, buffer,
+                          ctx->colors.cursor, ctx->colors.dir, ctx->colors.text,
+                          ctx->colors.bg);
+
+      } else if (type == TYPE_IMG) {
+        renderImage(buffer, sizeof(buffer));
+      } else if (type == TYPE_FILE) {
+        renderDirectories(ctx->currentY, ctx->currentX, buffer,
+                          ctx->colors.cursor, ctx->colors.text,
+                          ctx->colors.text, ctx->colors.bg);
+      }
+
+      ctx->render = 0;
     }
 
-    render = 0;
-  } else if (state == STATE_MENU) {
-    if (joystick->vert >= 2400 && joystick->vert <= 2700 &&
-        menu != MENU_ACCESS_DIRS) {
-      // Up on joystick
-      --menu;
-    } else if (joystick->vert < 2000 && menu != MENU_UPD_BRIGHT) {
-      // Down on joystick
-      ++menu;
+  } else if (ctx->state == STATE_MENU) {
+    if (ctx->render) {
+      // Refresh the screen (can be made more efficient)
+      renderFilledRectangle(0, 0, CFAF_WIDTH, CFAF_HEIGHT, ctx->colors.bg);
+      renderMenu(ctx);
+      ctx->render = 0;
     }
-
-    renderMenu();
   }
 }
 
@@ -320,33 +343,33 @@ void handleFriend(JOYSTICK *joystick) {
  * The main entry-point for the micro-controller.
  */
 int main() {
+  memset(&gCtx, 0, sizeof(gCtx));
+  gCtx.state = STATE_MENU;
+  gCtx.menuState = MENU_ACCESS_DIRS;
   // Black
-  bgColor = color24to16(0x0, 0x0, 0x0);
+  gCtx.colors.bg = color24to16(0x0, 0x0, 0x0);
   // White
-  textColor = color24to16(0xFF, 0xFF, 0xFF);
+  gCtx.colors.text = color24to16(0xFF, 0xFF, 0xFF);
+  // Blue
+  gCtx.colors.dir = color24to16(0x7B, 0x74, 0xFF);
+  // Green
+  gCtx.colors.cursor = color24to16(0x83, 0xFA, 0x89);
+  gCtx.brightness = 20;
 
   enableClocks();
   initGPIOs();
   initLPUART1();
-  initTimers(brightness);
+  initTimers(gCtx.brightness);
   initSPI1();
-  initLCD(bgColor);
+  initLCD(gCtx.colors.bg);
   initButtons();
-  initADC1();
+  initJoystick();
 
-  JOYSTICK joystick;
+  renderMenu(&gCtx);
+
   while (1) {
-    BITSET(ADC1->ISR, 6); // Clear the end of injected channel sequence flag
-    BITSET(ADC1->CR, 3);  // Start an injected conversion
-    // Wait for the injected sequence to finish
-    while (BITCHECK(ADC1->ISR, 6) == 0)
-      ;
-    joystick.vert = ADC1->JDR1 & 0xFFF;
-    joystick.horz = ADC1->JDR2 & 0xFFF;
-
-    handleFriend(&joystick);
-
-    delayMS(100);
+    delayMS(50);
+    handleFriend(&gCtx);
   }
 
   return 0;

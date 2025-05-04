@@ -10,7 +10,9 @@
 #include "bitmacro.h"
 #include "stm32l552xx.h"
 
-void delayMS(uint32_t val) {
+void delayMS(unsigned long val) {
+  (void)BITCHECK((*(volatile unsigned long *)&SysTick->CTRL),
+                 16);         // Clears COUNTFLAG
   BITCLEAR(SysTick->CTRL, 0); // Disable SysTick
   SysTick->LOAD = 16000 - 1;  // Period of 1 MS (16MHz / 16000)
   SysTick->VAL = 0;           // Reset counter
@@ -24,15 +26,14 @@ void delayMS(uint32_t val) {
   }
 }
 
-void resetTIM1Count() {
-  BITCLEAR(TIM1->CR1, 0); // Disable TIM1
-  BITSET(TIM1->EGR, 0);   // Update generation
-  BITCLEAR(TIM1->SR, 0);  // Clear update interrupt flag
-  BITSET(TIM1->CR1, 0);   // Enable TIM1
-}
-
 void initTimers(int pwm) {
-  TIM3->CR1 = 0;
+  TIM2->CR1 = 0;         // Disable TIM2
+  TIM2->CR2 = 0x20;      // Update event is trigger output (TRGO)
+  TIM2->PSC = 16000 - 1; // Period of 1 MS
+  TIM2->ARR = 33 - 1;    // Count 33 times
+  TIM2->CNT = 0;         // Reset counter
+
+  TIM3->CR1 = 0;          // Disable TIM3
   TIM3->PSC = 1;          // Period of 125 NS (16MHz / 2)
   TIM3->ARR = 100 - 1;    // Count 100 times
   BITSET(TIM3->CCMR1, 6); // Active for TIM3_CNT < TIM3_CCR1

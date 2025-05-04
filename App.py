@@ -2,6 +2,7 @@ import serial
 import serial.tools.list_ports
 import time
 from pathlib import Path
+from PIL import Image
 
 """
 Description: App.py is a program created to communicate with the STM32 board utilized for the file follower
@@ -58,6 +59,9 @@ def print_ports(ports):
         port_num = port_num + 1
         print(f"{port_num}) {port}: {desc} [{hwid}]")
 
+def color24to16(r, g, b):
+  return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)
+
 # prints ports
 ports = serial.tools.list_ports.comports()
 
@@ -109,8 +113,8 @@ while True:
         print("Invalid baudrate selected. Please choose a valid option.")
 
 # sets up serial object for data transfer
-ser = serial.Serial(port=com.device, baudrate=baudrate, timeout=0)
-time.sleep(2) # brief delay
+ser = serial.Serial(port=com.device, baudrate=baudrate, timeout=None, write_timeout=None)
+time.sleep(1) # brief delay
 ser.reset_input_buffer() # resets input buffer
 
 # program begins
@@ -124,6 +128,8 @@ while True:
     # checks if value is null
     if value:
         try:
+            # removes any invalid bytes
+            value = value.replace(b'\xFF', b'')
             string_value = value.decode('utf-8').strip() # gets received string
 
             # ensures empty strings are ignored
@@ -134,37 +140,69 @@ while True:
 
             # checks if 'y' character received
             if string_value == 'y':
+                current_path = Path(".").resolve() # gets the users current directory
                 print(f"Sending current directory")
-                file_tree = get_file_tree_string(r".") # gets contents of the current directory
-                ser.write(file_tree.encode('utf-8')) # writes string over UART
-                ser.write(b'\0') # adds null terminating character
+                file_tree = get_file_tree_string(current_path) # gets contents of the current directory
+                ser.write(b'd:' + file_tree.encode('utf-8') + b'\0') # writes string over UART
 
             # checks if 'g' character received
             elif string_value == 'g':
                 parent = current_path.parent # gets contents of the parent directory
-                print(f"Moving to parent directory: {parent}")
-
+                
                 # checks if the parent directory exists and ensures it is a directory
                 if parent.exists() and parent.is_dir():
+                    print(f"Moving to parent directory: {parent}")
                     current_path = parent # gets the parent path
                     tree = get_file_tree_string(current_path) # gets contents of parent
-                    ser.write(tree.encode('utf-8') + b'\0') # sends parent contents over UART
+                    ser.write(b'd:' + tree.encode('utf-8') + b'\0') # sends parent contents over UART
                 else:
                     print(f"Error: Parent directory does not exist.\n") # error checking
 
             # checks if the user submitted a directory to look at
             elif string_value:
-                directory_path = current_path / string_value # gets the directory path
+                parts = string_value.split(":", 1)
+                if(parts[0] != "o"):
+                    print(f"Error: Invalid command '{parts[0]}'")
+                    continue
+
+                path = parts[1]
+                #if(path[-1] == '/'):
+                 #   path = path[:-1]
+
+                directory_path = current_path / path # gets the directory path
 
                 # checks if the specified directory name is a valid directory
                 if directory_path.is_dir():
                     current_path = directory_path # gets the path
                     print(f"Sending file tree for {directory_path}...")
                     file_tree = get_file_tree_string(directory_path) # gets the contents of the directory
-                    ser.write(file_tree.encode('utf-8')) # sends contents over UART
-                    ser.write(b'\0') # adds null character
+                    ser.write(b'd:' + file_tree.encode('utf-8') + b'\0') # sends contents over UART
                 else:
-                    ser.write(f"Error: '{directory_path}' is not a valid directory.\n".encode('utf-8')) # error checking
+                    try:
+                        image = Image.open(directory_path)
+                        image.verify()
+                        image = Image.open(directory_path)
+                        current_path = directory_path
+                        new_image = image.resize((128, 130))
+                        width, height = new_image.size
+                        pixels = new_image.load()
+                        processed_pixels = bytearray()
+
+                        for y in range(height):
+                            for x in range(width):
+                                r, g, b = pixels[x, y]
+                                pixel = color24to16(r, g, b)
+                                processed_pixels.extend(pixel.to_bytes(2, 'little'))
+                        
+                        ser.write(b'b:' + len(processed_pixels).to_bytes(4, 'little') + bytes(processed_pixels))
+                    except:
+                        try:
+                            with open(directory_path, 'rb') as file:
+                                file_bytes = file.read()
+                                current_path = directory_path
+                                ser.write(b'f:' + len(file_bytes).to_bytes(4, 'little') + file_bytes)
+                        except:
+                            print(f"Error: '{directory_path}' is not a valid path.") # error checking
 
         # exception checking
         except UnicodeDecodeError:

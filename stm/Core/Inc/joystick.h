@@ -1,6 +1,6 @@
 /**
  * This file exposes the functions for
- * controlling the various buttons.
+ * controlling the joystick.
  *
  * @author Brodie Abrew & Lucas Berry
  */
@@ -11,8 +11,9 @@
 #include <stdint.h>
 
 /**
- * Initializes external interrupts for various buttons.
+ * Initializes the ADC and DMA used for
+ * acquiring joystick values.
  */
-void initButtons();
+void initJoystick();
 
 #endif

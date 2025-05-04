@@ -16,12 +16,7 @@
  *
  * @param val The number of milliseconds to delay
  */
-void delayMS(uint32_t val);
-
-/**
- * Resets the TIM1 counter value to 0.
- */
-void resetTIM1Count();
+void delayMS(unsigned long val);
 
 /**
  * Initializes TIM3 with the PWM value specified.
