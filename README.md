@@ -9,10 +9,10 @@ Using an embedded device to display file directory information from an external 
 
 ## Requirements
 
-- [ x ] Code for Project
-- [ x ] Product Design Document
-- [ x ] Specification Report
-- [ x ] Slideshow Presentation
+- [x] Code for Project
+- [x] Product Design Document
+- [x] Specification Report
+- [x] Slideshow Presentation
 
 ## Design Goals
 
