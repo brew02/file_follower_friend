@@ -1,3 +1,10 @@
+/**
+ * This file contains functions to initialize
+ * and handle interrupts for the joystick.
+ *
+ * @author Brodie Abrew & Lucas Berry
+ */
+
 #include "joystick.h"
 #include "bitmacro.h"
 #include "lcd.h"
@@ -53,6 +60,7 @@ void initJoystick() {
   BITSET(ADC1->CFGR, 7);
   BITSET(ADC1->CFGR, 6);
 
+  // Wait for ADC voltage regulator to start
   delayMS(10);
 
   BITCLEAR(ADC1->CFGR, 13); // Single conversion mode
@@ -89,6 +97,10 @@ void initJoystick() {
   BITSET(TIM2->CR1, 0); // Enable TIM2
 }
 
+/**
+ * Handles ADC1 and 2 interrupts (Note:
+ * It must have this exact name).
+ */
 void ADC1_2_IRQHandler() {
   static int polledY = 0;
   static int polledX = 0;
@@ -102,9 +114,12 @@ void ADC1_2_IRQHandler() {
     uint16_t horz = gCtx.joystick.horz & 0xFFF;
 
     if (vert >= 1500 && vert <= 2500 && polledY == 1) {
+      // Joystick is considered stationary, reset polled state
       polledY = 0;
     } else if (vert >= 3000 && polledY != 1) {
-
+      // Joystick is considered up, increment the
+      // y-value depending on the state, re-render,
+      // and set polled
       if (gCtx.state == STATE_DIRS && gCtx.currentY != 0) {
         gCtx.currentY--;
 
@@ -116,7 +131,9 @@ void ADC1_2_IRQHandler() {
       gCtx.render = 1;
       polledY = 1;
     } else if (vert <= 1000 && polledY != 1) {
-
+      // Joystick is considered down, decrement the
+      // y-value depending on the state, re-render,
+      // and set polled
       if (gCtx.state == STATE_DIRS && gCtx.currentY != LIMITY) {
         gCtx.currentY++;
       } else if (gCtx.state == STATE_MENU &&
@@ -129,9 +146,12 @@ void ADC1_2_IRQHandler() {
     }
 
     if (horz >= 1300 && horz <= 2300 && polledX == 1) {
+      // Joystick is considered stationary, reset polled state
       polledX = 0;
     } else if (horz >= 2700 && polledX != 1) {
-
+      // Joystick is considered right, increment the
+      // x-value depending on the state, re-render,
+      // and set polled
       if (gCtx.state == STATE_DIRS) {
         gCtx.currentX++;
       }
@@ -139,6 +159,9 @@ void ADC1_2_IRQHandler() {
       gCtx.render = 1;
       polledX = 1;
     } else if (horz <= 1000 && polledX != 1) {
+      // Joystick is considered left, decrement the
+      // x-value depending on the state, re-render,
+      // and set polled
       if (gCtx.state == STATE_DIRS && gCtx.currentX != 0) {
         gCtx.currentX--;
       }

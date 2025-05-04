@@ -59,6 +59,7 @@ def print_ports(ports):
         port_num = port_num + 1
         print(f"{port_num}) {port}: {desc} [{hwid}]")
 
+# turn a 24-bit color into a 16-bit color
 def color24to16(r, g, b):
   return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)
 
@@ -179,25 +180,33 @@ while True:
                     ser.write(b'd:' + file_tree.encode('utf-8') + b'\0') # sends contents over UART
                 else:
                     try:
+                        # try to open the file as an image
                         image = Image.open(directory_path)
                         image.verify()
                         image = Image.open(directory_path)
                         current_path = directory_path
+                        # resize the image
                         new_image = image.resize((128, 130))
                         width, height = new_image.size
+                        # load the pixels
                         pixels = new_image.load()
                         processed_pixels = bytearray()
 
                         for y in range(height):
                             for x in range(width):
+                                # grab each pixel and convert to 16-bit
                                 r, g, b = pixels[x, y]
                                 pixel = color24to16(r, g, b)
                                 processed_pixels.extend(pixel.to_bytes(2, 'little'))
                         
+                        # send the image
                         ser.write(b'b:' + len(processed_pixels).to_bytes(4, 'little') + bytes(processed_pixels))
                     except:
                         try:
+                            # wasn't an image or directory, try opening
+                            # as just a file
                             with open(directory_path, 'rb') as file:
+                                # read the file and send it
                                 file_bytes = file.read()
                                 current_path = directory_path
                                 ser.write(b'f:' + len(file_bytes).to_bytes(4, 'little') + file_bytes)

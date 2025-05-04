@@ -31,6 +31,7 @@ void sendCharLPUART1(const char c) {
 int receiveLPUART1(char *buffer, int size, int string) {
   int cnt = 0;
 
+  // While we still have room, receive characters
   while (cnt < size) {
     while (BITCHECK(LPUART1->ISR, 5) == 0)
       ;
@@ -38,10 +39,13 @@ int receiveLPUART1(char *buffer, int size, int string) {
     char received = LPUART1->RDR;
     buffer[cnt++] = received;
 
+    // If we are receiving c-style strings,
+    // end at null-terminators
     if (string == 1 && received == '\0')
       break;
   }
 
+  // Null-terminate our c-style buffer
   if (string == 1)
     buffer[cnt] = '\0';
 

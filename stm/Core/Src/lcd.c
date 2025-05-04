@@ -18,6 +18,7 @@
 #include "stm32l552xx.h"
 #include "timer.h"
 
+// Commands for the ST7735SS controller
 enum ST7735_COMMANDS {
   ST7735_NOP = 0x0,
   ST7735_SWRESET = 0x1,
@@ -46,6 +47,7 @@ enum ST7735_COMMANDS {
   ST7735_GMCTRN1 = 0xE1
 };
 
+// Font bitmap
 static const uint8_t font[] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x3E, 0x5B, 0x4F, 0x5B, 0x3E, 0x3E, 0x6B,
     0x4F, 0x6B, 0x3E, 0x1C, 0x3E, 0x7C, 0x3E, 0x1C, 0x18, 0x3C, 0x7E, 0x3C,
@@ -377,6 +379,7 @@ void initLCD(uint16_t bgColor) {
 }
 
 void renderFilledRectangle(int sX, int sY, int eX, int eY, uint16_t color) {
+  // Clipping check
   if ((sX < 0 || sX > CFAF_WIDTH) || (eX < 0 || eX > CFAF_WIDTH) ||
       (sY < 0 || sY > CFAF_HEIGHT) || (eY < 0 || eY > CFAF_HEIGHT)) {
     return;
@@ -384,26 +387,31 @@ void renderFilledRectangle(int sX, int sY, int eX, int eY, uint16_t color) {
 
   setRenderFrame(sX, sY, eX, eY);
 
-  for (int i = 0; i < CFAF_WIDTH; ++i) {
-    for (int j = 0; j < CFAF_HEIGHT; ++j) {
+  // Fill render frame (rectangle)
+  for (int i = 0; i < eY; ++i) {
+    for (int j = 0; j < eX; ++j) {
       // Send color
       sendLCDData((uint8_t)(color >> 8));
       sendLCDData((uint8_t)(color));
     }
   }
 
+  // Stop the RAMWR command
   sendLCDCommand(ST7735_NOP);
 }
 
 void renderImage(const char *buffer, int size) {
+  // Images always fill the screen
   setRenderFrame(0, 0, CFAF_WIDTH, CFAF_HEIGHT);
 
+  // Fill the screen with the buffer
   for (int i = 0; i < size; i += 2) {
     // Send color
     sendLCDData((uint8_t)(buffer[i]));
     sendLCDData((uint8_t)(buffer[i + 1]));
   }
 
+  // Stop the RAMWR command
   sendLCDCommand(ST7735_NOP);
 }
 
@@ -411,6 +419,7 @@ void renderChar(int x, int y, char c, uint16_t charColor, uint16_t bgColor) {
   const int endX = x + PIXELX;
   const int endY = y + PIXELY;
 
+  // Clipping check
   if ((x < 0 || x > CFAF_WIDTH) || (endX < 0 || endX > CFAF_WIDTH) ||
       (y < 0 || y > CFAF_HEIGHT) || (endY < 0 || endY > CFAF_HEIGHT)) {
     return;
@@ -441,6 +450,7 @@ void renderChar(int x, int y, char c, uint16_t charColor, uint16_t bgColor) {
     line <<= 1; // Move to the next line
   }
 
+  // Stop the RAMWR command
   sendLCDCommand(ST7735_NOP);
 }
 
@@ -450,7 +460,7 @@ unsigned long renderStringSafe(int x, int y, int size, const char *text,
   if (y >= LIMITY)
     return 0;
 
-  // loop to run through string
+  // Loop to run through string
   while (cnt < size && *text && x < LIMITX) {
     renderChar(x * PIXEL_SPACEX, y * PIXEL_SPACEY, *text++, textColor, bgColor);
     ++x;
@@ -475,11 +485,13 @@ unsigned long renderDirectories(int currentY, int currentX, const char *dirs,
   int end = 0;
   int isDir = 0;
 
+  // Only render up to the limit of the y-axis
   while (y < LIMITY) {
     x = 0;
     isDir = 0;
 
     if (y == currentY) {
+      // Render the cursor and allow for horizontal scrolling
       char *dir = (char *)getDirectory(currentY, dirs);
       if (dir == NULL)
         return cnt;
@@ -496,6 +508,7 @@ unsigned long renderDirectories(int currentY, int currentX, const char *dirs,
       cnt += 2;
     }
 
+    // Grab the current bounds
     while (*(dirs + end) && *(dirs + end) != '\n') {
       if (*(dirs + end) == '/')
         isDir = 1;
@@ -508,10 +521,12 @@ unsigned long renderDirectories(int currentY, int currentX, const char *dirs,
     renderStringSafe(x, y, end - start, dirs + start,
                      isDir == 1 ? dirColor : textColor, bgColor);
 
+    // Add some dots to indicate that there are more characters
     if ((end - start + x) > LIMITX) {
       renderStringSafe(LIMITX - 3, y, 3, "...", textColor, bgColor);
     }
 
+    // We reached the end
     if (*(dirs + end) == '\0')
       break;
 
@@ -539,5 +554,5 @@ void renderMenu(FFFContext *ctx) {
   sprintf(text, "Directories\nBrightness: %0*d", 3, ctx->brightness);
 
   renderDirectories(ctx->menuState, 0, text, ctx->colors.cursor,
-                    ctx->colors.dir, ctx->colors.text, ctx->colors.bg);
+                    ctx->colors.text, ctx->colors.text, ctx->colors.bg);
 }

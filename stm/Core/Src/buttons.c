@@ -78,6 +78,7 @@ void initButtons() {
  * It must have this exact name).
  */
 void EXTI13_IRQHandler() {
+  // Allow button to de-bounce
   delayMS(20);
   sendLPUART1("y\n", '\0');
   EXTI->RPR1 = (1 << 13); // Clear interrupt flag for PC13
@@ -88,6 +89,7 @@ void EXTI13_IRQHandler() {
  * It must have this exact name).
  */
 void EXTI7_IRQHandler() {
+  // Allow button to de-bounce
   delayMS(20);
   gCtx.buttons.joystick = 1;
   BITSET(EXTI->RPR1, 7); // Clear interrupt flag for external interrupt 7
@@ -98,6 +100,7 @@ void EXTI7_IRQHandler() {
  * It must have this exact name).
  */
 void EXTI6_IRQHandler() {
+  // Allow button to de-bounce
   delayMS(20);
   gCtx.buttons.bottom = 1;
   BITSET(EXTI->RPR1, 6); // Clear interrupt flag for external interrupt 6
@@ -108,6 +111,7 @@ void EXTI6_IRQHandler() {
  * It must have this exact name).
  */
 void EXTI5_IRQHandler() {
+  // Allow button to de-bounce
   delayMS(20);
   gCtx.buttons.top = 1;
   BITSET(EXTI->RPR1, 5); // Clear interrupt flag for external interrupt 5

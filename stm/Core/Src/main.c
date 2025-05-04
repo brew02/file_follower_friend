@@ -158,11 +158,13 @@ const char *getDirectory(int dir, const char *dirs) {
     return NULL;
   }
 
+  // While we have directory content
   while (*dirs) {
     if (dir == count) {
       return dirs;
     }
 
+    // New directory starts
     if (*dirs++ == '\n') {
       ++count;
     }
@@ -181,6 +183,15 @@ int getDirectoryLength(char *dir) {
   return len;
 }
 
+/**
+ * Gets the root directory from the python app.
+ *
+ * @param buffer The buffer to store the root
+ * directory contents in
+ * @param size The size that can be received
+ *
+ * @return The number of bytes received
+ */
 int rootDir(char *buffer, int size) {
   sendLPUART1("y\n", '\0');
 
@@ -194,6 +205,19 @@ int rootDir(char *buffer, int size) {
 
 typedef enum { TYPE_INVALID = -1, TYPE_DIR, TYPE_IMG, TYPE_FILE } OPEN_TYPE;
 
+/**
+ * Opens a path from the python app.
+ *
+ * @param path The path to open, relative to
+ * the current directory
+ * @param buffer The buffer to store the newly
+ * opened contents in
+ * @param type Denotes the type of path that was
+ * opened
+ * @param size The size that can be received
+ *
+ * @return The number of bytes received
+ */
 int openPath(char *path, char *buffer, OPEN_TYPE *type, int size) {
   sendLPUART1("o:", '\0');
   sendLPUART1(path, '\n');
@@ -201,25 +225,42 @@ int openPath(char *path, char *buffer, OPEN_TYPE *type, int size) {
 
   char cmd[2] = {0};
   receiveLPUART1(cmd, sizeof(cmd), 0);
+
   if (cmd[0] == 'd' && cmd[1] == ':') {
+    // We opened a directory
     *type = TYPE_DIR;
     return receiveLPUART1(buffer, size, 1);
   } else if (cmd[0] == 'b' && cmd[1] == ':') {
+    // We opened an image
     *type = TYPE_IMG;
     receiveLPUART1((char *)&size, sizeof(size), 0);
     return receiveLPUART1(buffer, size, 0);
   } else if (cmd[0] == 'f' && cmd[1] == ':') {
+    // We opened a file
     *type = TYPE_FILE;
     receiveLPUART1((char *)&size, sizeof(size), 0);
     int len = receiveLPUART1(buffer, size, 0);
+
     if (len != 0)
       buffer[len - 1] = '\0';
+
     return len;
   }
 
+  // We opened... nothing
   return 0;
 }
 
+/**
+ * Gets the parent directory from the python app,
+ * relative to the current directory.
+ *
+ * @param buffer The buffer to store the parent
+ * directory contents in
+ * @param size The size that can be received
+ *
+ * @return The number of bytes received
+ */
 int parentDir(char *buffer, int size) {
   sendLPUART1("g\n", '\0');
 
@@ -244,9 +285,10 @@ void handleFriend(FFFContext *ctx) {
 
   if (ctx->buttons.top) {
     ctx->buttons.top = 0;
-
     if (ctx->state == STATE_MENU) {
       if (ctx->menuState == MENU_ACCESS_DIRS) {
+
+        // Selected the "Directories" menu option
         int cnt = rootDir(buffer, sizeof(buffer));
         if (cnt == 0)
           return;
@@ -256,12 +298,14 @@ void handleFriend(FFFContext *ctx) {
         ctx->state = STATE_DIRS;
         ctx->render = 1;
       } else if (ctx->menuState == MENU_UPD_BRIGHT) {
+        // Increase LCD backlight brightness (capped at 100)
         int brightness = ctx->brightness + 5;
         ctx->brightness = (brightness > 100 ? 100 : brightness);
         updateTIM3PWM(ctx->brightness);
         ctx->render = 1;
       }
     } else if (ctx->state == STATE_DIRS && type == TYPE_DIR) {
+      // Access a path within the current directory
       char *path = (char *)getDirectory(ctx->currentY, buffer);
       if (path != NULL) {
         int cnt = openPath(path, buffer, &type, sizeof(buffer));
@@ -279,12 +323,14 @@ void handleFriend(FFFContext *ctx) {
 
     if (ctx->state == STATE_MENU) {
       if (ctx->menuState == MENU_UPD_BRIGHT) {
+        // Decrease the LCD backlight brightness (minimum of 0)
         int brightness = ctx->brightness - 5;
         ctx->brightness = (brightness < 0 ? 0 : brightness);
         updateTIM3PWM(ctx->brightness);
         ctx->render = 1;
       }
     } else if (ctx->state == STATE_DIRS) {
+      // Access the parent directory of the current directory
       int cnt = parentDir(buffer, sizeof(buffer));
       if (cnt == 0)
         return;
@@ -296,6 +342,7 @@ void handleFriend(FFFContext *ctx) {
       ctx->render = 1;
     }
   } else if (ctx->buttons.joystick) {
+    // Return back to the menu
     ctx->buttons.joystick = 0;
     ctx->state = STATE_MENU;
     ctx->menuState = MENU_ACCESS_DIRS;
@@ -314,13 +361,16 @@ void handleFriend(FFFContext *ctx) {
       // Refresh the screen (can be made more efficient)
       renderFilledRectangle(0, 0, CFAF_WIDTH, CFAF_HEIGHT, ctx->colors.bg);
       if (type == TYPE_DIR) {
+        // Render all directories
         renderDirectories(ctx->currentY, ctx->currentX, buffer,
                           ctx->colors.cursor, ctx->colors.dir, ctx->colors.text,
                           ctx->colors.bg);
 
       } else if (type == TYPE_IMG) {
+        // Render an image
         renderImage(buffer, sizeof(buffer));
       } else if (type == TYPE_FILE) {
+        // Render the file (won't have any blue highlighting)
         renderDirectories(ctx->currentY, ctx->currentX, buffer,
                           ctx->colors.cursor, ctx->colors.text,
                           ctx->colors.text, ctx->colors.bg);
