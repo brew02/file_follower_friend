@@ -9,10 +9,10 @@ Using an embedded device to display file directory information from an external 
 
 ## Requirements
 
-- [ ] Code for Project
-- [ ] Product Design Document
-- [ ] Specification Report
-- [ ] Slideshow Presentation
+- [ x ] Code for Project
+- [ x ] Product Design Document
+- [ x ] Specification Report
+- [ x ] Slideshow Presentation
 
 ## Design Goals
 
@@ -30,4 +30,6 @@ Using an embedded device to display file directory information from an external 
 ## Build/Run Instructions
 
 **Work in Progress**
-Install PySerial with the following command: `python -m pip install pyserial`
+
+- Install PySerial with the following command: `python -m pip install pyserial`
+- Install Pillow with the following command: `python -m pip install pillow`
