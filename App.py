@@ -140,8 +140,9 @@ while True:
 
             # checks if 'y' character received
             if string_value == 'y':
+                current_path = Path(".").resolve() # gets the users current directory
                 print(f"Sending current directory")
-                file_tree = get_file_tree_string(r".") # gets contents of the current directory
+                file_tree = get_file_tree_string(current_path) # gets contents of the current directory
                 ser.write(b'd:' + file_tree.encode('utf-8') + b'\0') # writes string over UART
 
             # checks if 'g' character received

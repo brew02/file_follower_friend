@@ -12,6 +12,7 @@
 
 #include "bitmacro.h"
 #include "buttons.h"
+#include "joystick.h"
 #include "lcd.h"
 #include "main.h"
 #include "spi.h"
@@ -27,6 +28,10 @@ FFFContext gCtx = {0};
 void enableClocks() {
   BITSET(RCC->APB1ENR1, 28); // Power interface clock enable
   BITSET(RCC->APB1ENR1, 1);  // TIM3 clock enable
+  BITSET(RCC->APB1ENR1, 0);  // TIM2 clock enable
+
+  BITSET(RCC->AHB1ENR, 2); // DMAMUX1 clock enable
+  BITSET(RCC->AHB1ENR, 0); // DMA1 clock enable
 
   BITSET(RCC->AHB2ENR, 13); // ADC clock enable
   BITSET(RCC->AHB2ENR, 6);  // GPIOG clock enable
@@ -147,49 +152,6 @@ void initGPIOs() {
   BITSET(GPIOA->MODER, 8);
 }
 
-void initADC1() {
-  // Check if the ADC is enabled
-  if (BITCHECK(ADC1->CR, 0) == 1) {
-    BITSET(ADC1->CR, 1); // Disable ADC1
-    // Wait for the ADC to disable
-    while (BITCHECK(ADC1->CR, 0) == 1)
-      ;
-  }
-
-  BITCLEAR(ADC1->CR, 29); // Disable ADC deep-power down
-  BITSET(ADC1->CR, 28);   // Enable ADC voltage regulator
-
-  delayMS(10);
-
-  BITSET(ADC12_COMMON->CCR, 21); // Divide ADC clocks by 32
-  BITCLEAR(ADC12_COMMON->CCR, 20);
-  BITCLEAR(ADC12_COMMON->CCR, 19);
-  BITCLEAR(ADC12_COMMON->CCR, 18);
-
-  BITSET(ADC1->ISR, 0); // Clear ADRDY flag
-
-  BITSET(ADC1->CR, 0);                // Enable ADC1
-  while (BITCHECK(ADC1->ISR, 0) == 0) // Wait for ADC1 to be ready
-    ;
-
-  BITSET(ADC1->ISR, 0); // Clear ADRDY flag
-
-  BITCLEAR(ADC1->JSQR, 18); // Read channel 10 (GPIOA 5)
-  BITSET(ADC1->JSQR, 17);
-  BITCLEAR(ADC1->JSQR, 16);
-  BITSET(ADC1->JSQR, 15);
-  BITCLEAR(ADC1->JSQR, 14);
-
-  BITCLEAR(ADC1->JSQR, 12); // Read channel 9 (GPIOA 4)
-  BITSET(ADC1->JSQR, 11);
-  BITCLEAR(ADC1->JSQR, 10);
-  BITCLEAR(ADC1->JSQR, 9);
-  BITSET(ADC1->JSQR, 8);
-
-  BITCLEAR(ADC1->JSQR, 1); // Read two injected channels
-  BITSET(ADC1->JSQR, 0);
-}
-
 /**
  * Gets the directory from a string containing all
  * content in the current directory.
@@ -267,14 +229,11 @@ int parentDir(char *buffer, int size) {
  * Handles the main functionality of File
  * Follower Friend (FFF).
  *
- * @param joystick Contains the ADC converted
- * vertical and horizontal values of the joystick
+ * @param ctx The File Follower Friend context
  */
 void handleFriend(FFFContext *ctx) {
   static char buffer[((CFAF_HEIGHT + 1) * (CFAF_WIDTH + 1) * 2) + 1];
   static int len = 0;
-  static int render = 0;
-  static int currentY = 0;
   static OPEN_TYPE type = TYPE_INVALID;
 
   if (ctx->buttons.top) {
@@ -289,23 +248,23 @@ void handleFriend(FFFContext *ctx) {
         type = TYPE_DIR;
         len = cnt;
         ctx->state = STATE_DIRS;
-        render = 1;
+        ctx->render = 1;
       } else if (ctx->menuState == MENU_UPD_BRIGHT) {
         int brightness = ctx->brightness + 5;
         ctx->brightness = (brightness > 100 ? 100 : brightness);
         updateTIM3PWM(ctx->brightness);
-        render = 1;
+        ctx->render = 1;
       }
     } else if (ctx->state == STATE_DIRS) {
-      char *path = getDirectory(currentY, buffer);
+      char *path = getDirectory(ctx->currentY, buffer);
       if (path != NULL) {
         int cnt = openPath(path, buffer, &type, sizeof(buffer));
         if (cnt == 0)
           return;
 
         len = cnt;
-        currentY = 0;
-        render = 1;
+        ctx->currentY = 0;
+        ctx->render = 1;
       }
     }
   } else if (ctx->buttons.bottom) {
@@ -316,7 +275,7 @@ void handleFriend(FFFContext *ctx) {
         int brightness = ctx->brightness - 5;
         ctx->brightness = (brightness < 0 ? 0 : brightness);
         updateTIM3PWM(ctx->brightness);
-        render = 1;
+        ctx->render = 1;
       }
     } else if (ctx->state == STATE_DIRS) {
       int cnt = parentDir(buffer, sizeof(buffer));
@@ -325,8 +284,8 @@ void handleFriend(FFFContext *ctx) {
 
       type = TYPE_DIR;
       len = cnt;
-      currentY = 0;
-      render = 1;
+      ctx->currentY = 0;
+      gCtx.render = 1;
     }
   } else if (ctx->buttons.joystick) {
     ctx->buttons.joystick = 0;
@@ -334,54 +293,35 @@ void handleFriend(FFFContext *ctx) {
     ctx->menuState = MENU_ACCESS_DIRS;
     type = TYPE_INVALID;
     len = 0;
-    currentY = 0;
-    render = 1;
+    ctx->currentY = 0;
+    ctx->render = 1;
   }
 
   if (ctx->state == STATE_DIRS) {
-    if (ctx->joystick.vert >= 2400 && ctx->joystick.vert <= 2700 &&
-        currentY != 0) {
-      // Up on joystick
-      --currentY;
-      render = 1;
-    } else if (ctx->joystick.vert < 2000 && currentY != LIMITY) {
-      // Down on joystick
-      ++currentY;
-      render = 1;
-    }
+    if (ctx->render) {
+      if (len == 0)
+        return;
 
-    if (render && len != 0) {
       // Refresh the screen (can be made more efficient)
       renderFilledRectangle(0, 0, CFAF_WIDTH, CFAF_HEIGHT, ctx->colors.bg);
       if (type == TYPE_DIR) {
-        renderDirectories(currentY, buffer, ctx->colors.cursor, ctx->colors.dir,
-                          ctx->colors.text, ctx->colors.bg);
+        renderDirectories(ctx->currentY, buffer, ctx->colors.cursor,
+                          ctx->colors.dir, ctx->colors.text, ctx->colors.bg);
 
       } else if (type == TYPE_IMG) {
         renderImage(buffer, sizeof(buffer));
       }
+
+      ctx->render = 0;
     }
 
-    render = 0;
   } else if (ctx->state == STATE_MENU) {
-    if (ctx->joystick.vert >= 2400 && ctx->joystick.vert <= 2700 &&
-        ctx->menuState != MENU_ACCESS_DIRS) {
-      // Up on joystick
-      ctx->menuState--;
-      render = 1;
-    } else if (ctx->joystick.vert < 2000 && ctx->menuState != MENU_UPD_BRIGHT) {
-      // Down on joystick
-      ctx->menuState++;
-      render = 1;
-    }
-
-    if (render) {
+    if (ctx->render) {
       // Refresh the screen (can be made more efficient)
       renderFilledRectangle(0, 0, CFAF_WIDTH, CFAF_HEIGHT, ctx->colors.bg);
       renderMenu(ctx);
+      ctx->render = 0;
     }
-
-    render = 0;
   }
 }
 
@@ -409,22 +349,13 @@ int main() {
   initSPI1();
   initLCD(gCtx.colors.bg);
   initButtons();
-  initADC1();
+  initJoystick();
 
   renderMenu(&gCtx);
 
   while (1) {
-    BITSET(ADC1->ISR, 6); // Clear the end of injected channel sequence flag
-    BITSET(ADC1->CR, 3);  // Start an injected conversion
-    // Wait for the injected sequence to finish
-    while (BITCHECK(ADC1->ISR, 6) == 0)
-      ;
-    gCtx.joystick.vert = ADC1->JDR1 & 0xFFF;
-    gCtx.joystick.horz = ADC1->JDR2 & 0xFFF;
-
-    handleFriend(&gCtx);
-
     delayMS(50);
+    handleFriend(&gCtx);
   }
 
   return 0;

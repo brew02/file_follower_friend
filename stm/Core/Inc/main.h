@@ -39,6 +39,7 @@ typedef struct {
   Buttons buttons;
   Colors colors;
   int brightness;
+  int currentY;
   int render;
 } FFFContext;
 
