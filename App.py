@@ -195,10 +195,14 @@ while True:
                                 processed_pixels.extend(pixel.to_bytes(2, 'little'))
                         
                         ser.write(b'b:' + len(processed_pixels).to_bytes(4, 'little') + bytes(processed_pixels))
-                    except Exception as e:
-                        print(f"Exception type: {type(e)}")
-                        print(f"Exception value: {e}")
-                        print(f"Error: '{directory_path}' is not a valid path.") # error checking
+                    except:
+                        try:
+                            with open(directory_path, 'rb') as file:
+                                file_bytes = file.read()
+                                current_path = directory_path
+                                ser.write(b'f:' + len(file_bytes).to_bytes(4, 'little') + file_bytes)
+                        except:
+                            print(f"Error: '{directory_path}' is not a valid path.") # error checking
 
         # exception checking
         except UnicodeDecodeError:

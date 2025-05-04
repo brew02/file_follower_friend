@@ -209,6 +209,13 @@ int openPath(char *path, char *buffer, OPEN_TYPE *type, int size) {
     *type = TYPE_IMG;
     receiveLPUART1((char *)&size, sizeof(size), 0);
     return receiveLPUART1(buffer, size, 0);
+  } else if (cmd[0] == 'f' && cmd[1] == ':') {
+    *type = TYPE_FILE;
+    receiveLPUART1((char *)&size, sizeof(size), 0);
+    int len = receiveLPUART1(buffer, size, 0);
+    if (len != 0)
+      buffer[len - 1] = '\0';
+    return len;
   }
 
   return 0;
@@ -255,7 +262,7 @@ void handleFriend(FFFContext *ctx) {
         updateTIM3PWM(ctx->brightness);
         ctx->render = 1;
       }
-    } else if (ctx->state == STATE_DIRS) {
+    } else if (ctx->state == STATE_DIRS && type == TYPE_DIR) {
       char *path = getDirectory(ctx->currentY, buffer);
       if (path != NULL) {
         int cnt = openPath(path, buffer, &type, sizeof(buffer));
@@ -310,6 +317,9 @@ void handleFriend(FFFContext *ctx) {
 
       } else if (type == TYPE_IMG) {
         renderImage(buffer, sizeof(buffer));
+      } else if (type == TYPE_FILE) {
+        renderDirectories(ctx->currentY, buffer, ctx->colors.cursor,
+                          ctx->colors.text, ctx->colors.text, ctx->colors.bg);
       }
 
       ctx->render = 0;
